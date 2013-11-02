@@ -1,0 +1,15 @@
+.editable {
+  width: 400px;
+}
+
+[contenteditable="true"] {
+  background-color: lightgrey;
+}
+
+[contenteditable="true"]:hover {
+  background-color: rgb(233, 233, 233);
+}
+
+[contenteditable="true"]:focus {
+  outline: none;
+}
