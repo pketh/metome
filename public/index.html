@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <title>Mongoland</title>
   <link rel="stylesheet" type="text/css" href="style.css" />
-  <script src="libs/mustache.js"></script>
   <script src="libs/socket.io.min.js"></script>
   <script src="libs/jquery-2.0.3.js"></script>
   <script src="script.js"></script>
@@ -14,82 +13,21 @@
 
 <h1 class='title'>metome entry</h1>
 
-      <span class="child" contenteditable="true">First child span text.</span>
-      <span class="child" contenteditable="true">Second child span text.</span>
+<div class="status">zZz</div>
 
-<script id="post" type="text/template">
 <div class="editable" contenteditable="true">  
-  <h2>{{bio}}</h2>
-  <p>{{summary}}</p>
-</div>
-
-  <span class="child" contenteditable="true">static inside template.</span>
-  <span class="child" contenteditable="true">static inside template.</span>
   
-  // being inside the script is what's killing it
-
-</script>
-
-<script id="artistsTemplate" type="text/template">
-  <div class='artists' >
-    <h3>{{name}}</h3>
-    <ul>
-      <li>{{bio}}</li>
-      <li>{{summary}}</li>
-    </ul>
+  <!-- h2 inserted from script -->
+  <div class="title">
+    <h2></h2>
   </div>
-</script>
+  
+  <!-- p contents from script -->
+  <div class="content">
+    <p></p>
+  </div>
 
-<!-- <script id="titlesTemplate" type="text/template">
-  <h3>This is everything you&#8217;ve written</h3>
-  <ul>
-    {{#titles}}
-    <li>{{title}}</li>
-    {{/titles}}
-  </ul>
-</script>
- -->  
-<!-- Let's try somethign with socket.io -->  
-
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-<script>          
-    // wrap in doc ready..
-    
-    // show a single entry
-    $.getJSON('artists.json', function(data) {
-      var postInsert = $('#post').html();
-      var posts = Mustache.render(postInsert, data);
-      $(posts).insertAfter('.title');
-
-      var artistsInsert = $('#artistsTemplate').html();
-      var artists = Mustache.render(artistsInsert, data);
-      $(artists).insertAfter('#post');
-    });
-    
-    // show all names
-    $.getJSON('titles.json', function(data) {
-      var titlesInsert = $('#titlesTemplate').html();
-      var titles = Mustache.render(titlesInsert, data);
-      $(titles).insertAfter('.artists');
-    });
-    
-  </script>
+</div>  
 
 </body>
 </html>
-
-<!-- minify mustache.js -->
