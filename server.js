@@ -10,7 +10,7 @@ var app = connect()
   .use(connect.static('public'))
   .listen(3000);
 
-// BLOOP! the following block is old temp code that resets that test json files
+// BLOOP! the following block is old TEMP code that resets that test json files
 // artists = {
 //     name: "Frida Kahlo",
 //     bio: "Surrealist",
@@ -51,31 +51,56 @@ io.sockets.on('connection', function (socket) {
       //   socket.emit('initial connxtion', {data: 'the post stuff'})
       // });
 
+  MongoClient.connect('mongodb://localhost/metome', function(err, db) {
+    if (err) throw err;
+    console.log("Connected to db");
+      
+    // represents collection/user id
+    var collection = db.collection('pirijan'); //switch to user var
+    // unique record id
+    var idnum = "5279262e74d92da751eb2b8e"
+    var record = 'ObjectId(' + idnum + ')'
+    
+    // display number of records
+    collection.count(function(err, count) {
+      console.log("There are " + count + " records.");
+    })
+
   
   // when the client emits 'some event' , call the callback func w data (data sent from client)
-  socket.on('contentEdited', function (newContent) {
-    console.log(newContent);
-    
-    fs.writeFileSync('public/json/artists.json', newcontent, String, function(err){
-      if (err) throw err;
-      console.log('successfully written in: ' + newcontent)
-    })
-    
-    // pipe it into writestream...
-    // .pipe(fs.createWriteStream(pathToFile)) //write to disk as data arrives.
-    // .on('end', function () {
-       //done
-       // emit 'saved' event
-  })
+    socket.on('contentEdited', function (newContent) {
+      // console.log(newContent);
+      
+      // fs.writeFileSync('public/json/artists.json', newcontent, String, function(err){
+      //   if (err) throw err;
+      //   console.log('successfully written in: ' + newcontent)
+      // })
+      
+      // pipe it into writestream...
+      // .pipe(fs.createWriteStream(pathToFile)) //write to disk as data arrives.
+      // .on('end', function () {
+         //done
+         // emit 'saved' event
+  
+         
+  
+         
+  
+      //update record
+      collection.update({ _id : record}, {$set: {content:newContent}}, {w:1}, function(err, result) {
+        if (err) throw err;
+        
+        console.log('record ' + record + ' successfully updated :)');
+        
+        var currentRecord = collection.find({ _id : record })
+        console.log(currentRecord);
+      });
+      
+    }); // close mongo record update connection
+  
+         
+  }); // close socket listening for contentEdited
 
-
-MongoClient.connect('mongodb://localhost/pirijan', function(err, db) {
-  if (err) {return console.log(err);}
-  console.log("Connected to db");
-
-  var collection = db.collection('test');
-  var everything = collection.find().toString(function(err, items){});
-});
 
 
 

@@ -18,7 +18,8 @@ MongoClient.connect('mongodb://localhost/pirijan', function(err, db) {
 
   var doc2 = { mykey:2, docs:[{doc1:1}] };
   collection.insert(doc2, {w:1}, function(err, result) {
-    collection.update({mykey:1}, {$push:{docs:{docs2:1}}}, {w:1}, function(err, result) {});
-    // update {what} {push onto array} {w = result 1}, callback funcs
+    collection.update({mykey:1}, {$push:{docs:{docs2:1}}}, {w:1}, function(err, result) {
+      // update {what} {push onto array} {w = result 1}, callback funcs    
+    });
   }); 
 });
