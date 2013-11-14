@@ -1,35 +1,123 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 $(document).ready(function () {
-  $('.title').on('click', function() {
-    alert('hi')
+
+// ----------- Entries -------------
+      
+  var socket = io.connect('http://localhost:8000')
+  
+  var user = 'pirijan' // TODO - auth
+
+  socket.on('connect', function () { 
+    socket.emit('login', user );   
   });
-    
-  // issue with keyup (to keypress) is it registers arrow keys (only want to register new or deleted chars - i.e. changes to doc)
-  $('.child').on('keyup', function() {
-    alert('content change')
+
+  // ask for all titles
+  // *** Revise - tied to routing to route
+  $('.titlestemp').on('click', function(){ // Placeholder trigger
+    socket.emit('entries'); 
   });
   
-  var socket = io.connect('http://localhost:8000');
-
-  // detect content changes and emit to server
-  $('[contenteditable]').on('keypress', function() {
-    newValue = $('.content').html()
-    // console.log(newValue)
-    socket.emit('contentEdited', { content: newValue }); 
+  // list entries
+  socket.on('entriesSuccessful', function(titles){
+    titles.forEach(function(titleIndex) {
+      var entryID = titleIndex._id
+      $(".entriesList").append('<li data-id = "' + entryID + '">' + titleIndex.title + '</li>');
+      // incl something ehre for highlighting previously edited entry id? 
+      // if entryID = previous entry id .. then... (means pulling in previously edited id in the socket.on)
+    });
   });
-// how to id this?.. what if multiple forms?
-});
+  
+  // request an entry
+  $('.entriesList').on('click', 'li', function(){
+    var entryID = $(this).data('id')
+    socket.emit('entry', entryID)
+    
+    // HERE IS WHERE U CLEAR THE ENTRIES LIST? orrrr Update only the changes? ----> on title save... THEN add highlight class for the id that changed on retrigger (means IF at top of entriesSuccessful). incl an if null/else eval too
+    
+    // !! HERE IS WHERE YOU CLEAR ENTRY CONTENTS. confirmed
+    
+  });
+  
+  
+// ------------ load Entry --------------
 
-// fetch json entry data from server
-// !!!!!! insert this $getjson into socket.on event below..
+  socket.on('entrySuccessful', function(entry, entryMonthStr, entryYear, entryID){
 
-$.getJSON('json/artists.json', function(artistsdata) {
-  var title = artistsdata.name
-  var content = artistsdata.summary
+    // use jquery replaceWith (didnt work) // wipes first instead.. OR trigger wipe on entriesList click
+    
+    $('.entry').attr('data-id', entryID);
+    console.log($('.entry')); // DEBUG 
+    
+    $('.entry .title h2').append(entry.title);
+    $('.entry .content p').append(entry.content);
 
-  $('.editable .title h2').append(title);
-  $('.editable .content p').append(content);
+    $('.entryDate').append(entryMonthStr + ', ' + entryYear);
+  })  
 
-});
+// ************* Title ***************
+  
+  // TODO : add if or switch nesting for don't save on cursor movement
+    
+  // save Title on keyup
+  $('.title[contenteditable]').on('keyup', function(event) {
+         
+    var newTitle = $('.title h2').html()
+    var entryID = $('.entry').data('id')
+    socket.emit('titleEdited', { title: newTitle }, entryID); // add entryID to the emit
+    
+    console.log('Saving... ' + 'title ' + entryID) // DEBUG --> closure // ADD print ENTRY ID
+    console.log(newTitle); // DEBUG
+  });
+
+  // .title 'enter' acts like 'tab'
+  $('.title[contenteditable]').on('keypress', function(event) {
+    if(event.which == 13) {
+      event.preventDefault();
+      $('.content[contenteditable]').focus();
+    }
+  });
+
+
+// ************* Content *************
+  
+  // keyup bug/issue: registering cursor movement as keyup event. (keypress won't work)
+  
+  // save Content on keyup
+  $('.content[contenteditable]').on('keyup', function(event) {
+      
+      var newContent = $('.content p').html()
+      var entryID = $('.entry').data('id')
+      
+      socket.emit('contentEdited', { content: newContent }, entryID);
+      
+      console.log('Saving... ' + 'content ' + entryID) // DEBUG --> closure closure // ADD print ENTRY ID
+      console.log(newContent) // DEBUG
+  });
+
+  
+  socket.on('saveSuccess', function(entryID) {
+    console.log('Saved ' + entryID) // DEBUG -> also show // + entryID
+    // TODO LATER -> PLACEHOLDER do something on the client to show saved (fade in and out of zZz)
+    // some kind of time out or delay buffer
+  });
+
+
+
+
 
 
 
@@ -52,4 +140,9 @@ $.getJSON('json/artists.json', function(artistsdata) {
 
 // socket.on('disconnect', function() {
 //   // let users know somethign bad happened 'connection error' 
+// assuming all disconnects = errors . 'connection lost' reload 
+// 'read only mode'
+// client => make all contenteditable uneditable (false)
 // })
+
+}); // close domready

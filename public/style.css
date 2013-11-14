@@ -1,4 +1,6 @@
-.editable {
+/* install fancy grunt watch thing for vendor prefix free */
+
+.entry {
   width: 400px;
 }
 
@@ -12,4 +14,14 @@
 
 [contenteditable="true"]:focus {
   outline: none;
+}
+
+.entriesList li:hover , .temps:hover{
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.newEntry {
+  color: #5200AE;
+  font-weight: bold;
 }

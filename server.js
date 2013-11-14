@@ -1,32 +1,209 @@
 var MongoClient = require('mongodb'),
+  ObjectId = require('mongodb').ObjectID,
   connect = require('connect'),
   http = require('http'),
   io = require('socket.io').listen(8000),
   fs = require('fs');
-  // npm install router here
+  // --> npm install lean mean router here ..
+  // --> auth
   
+// --> refactor: local require files = closures.js , api (for json curl reqs)
+
+Metome = {}; // Globally scoped object
+
+io.configure('development', function(){
+  io.set('log level', 2); // default is 3 (shows full debug)
+});
+    
 var app = connect()
   .use(connect.logger('dev'))
   .use(connect.static('public'))
   .listen(3000);
 
-// BLOOP! the following block is old TEMP code that resets that test json files
-// artists = {
-//     name: "Frida Kahlo",
-//     bio: "Surrealist",
-//     summary: "Frida Kahlo was a Mexican painter best know for her surrealist self-portraits, depicting her intense emotional and physical pain. She was three years old at the onset of the Mexican Revolution."
-// };
-// 
-// titles = {
-//   titles : [
-//     {title: 'first thing.'},
-//     {title: 'second Thing'},
-//     {title: 'A night in paris'},
-//     {title: 'Something you should know'},
-//     {title: 'The perfect trip.'}
-//   ]
-// };
-// 
+// events
+io.sockets.on('connection', function(socket) {
+  socket.on('login', function(username){
+    var user = username;
+    
+    MongoClient.connect('mongodb://localhost/metome', function(err, db) {
+      if (err) throw err;  
+      var collection = db.collection(user); 
+    
+      // listen for titles request      
+      socket.on('entries', function(){        
+        collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) { // query db -> get titles in reverse order by id/cdate -> convert to array -> make titles object [{x,y}, {x,y}]
+          if (err) throw err;
+          socket.emit('entriesSuccessful', titles)
+          console.log(titles)
+        });
+      });
+      
+      // load individual entry
+      socket.on('entry', function(entryID){
+        console.log(entryID); // DEBUG        
+        collection.findOne({ _id : ObjectId ( entryID ) },function(err,entry) { // pulls in entry object
+          if (err) throw err;
+          var entryDate = new Date( (ObjectId(entryID).getTimestamp()) )
+          var entryMonth = entryDate.getMonth()
+          switch (entryMonth)
+          {
+          case 0:
+            var entryMonthStr = 'Jan';
+            break;
+          case 1:
+            var entryMonthStr = 'Feb';
+            break;
+          case 2:
+            var entryMonthStr = 'Mar';
+            break;
+          case 3:
+            var entryMonthStr = 'Apr';
+            break;
+          case 4:
+            var entryMonthStr = 'May';
+            break;
+          case 5:
+            var entryMonthStr = 'Jun';
+            break;
+          case 6:
+            var entryMonthStr = 'Jul';
+            break;
+          case 7:
+            var entryMonthStr = 'Aug';
+            break;
+          case 8:
+            var entryMonthStr = 'Sep';
+            break;
+          case 9:
+            var entryMonthStr = 'Oct';
+            break;
+          case 10:
+            var entryMonthStr = 'Nov';
+            break;
+          case 11:
+            var entryMonthStr = 'Dec';
+            break;
+          default:
+            var entryMonthStr = 'err';
+            break;
+          }
+          var entryYear = entryDate.getFullYear()
+          
+          socket.emit('entrySuccessful', entry, entryMonthStr, entryYear, entryID); 
+        });
+      });
+      
+      // db.pirijan.findOne({ '_id' : ObjectId("5279262e74d92da751eb2b8e") })
+
+// console.log(Metome.entryID) // global id scope test
+// returns Thu Sep 20 2012 22:56:39 GMT-0400
+      
+      // write title on changes
+      socket.on('titleEdited', function(newTitle, entryID) {      
+        collection.update(
+          { '_id' : ObjectId ( entryID ) }, // id should be passed in from client
+          { $set: 
+           newTitle
+          },
+          function (err) {
+            if (err) throw err;
+            console.log(newTitle); // DEBUG
+            console.log(entryID); // DEBUG
+            socket.emit('saveSuccess', entryID);
+        });
+      });    
+      
+      // write content on changes
+      socket.on('contentEdited', function(newContent, entryID) {
+        collection.update(
+          { '_id' : ObjectId ( entryID ) }, // id should be passed in from client
+          { $set: 
+           newContent
+          },
+          function (err) {
+            if (err) throw err;
+            console.log(newContent); // DEBUG
+            console.log(entryID) // DEBUG
+            socket.emit('saveSuccess', entryID);
+        });
+      });
+          
+      
+      socket.on('newEntry', function(err){
+        if (err) throw err;
+        //
+        // get entryID
+        socket.emit('newEntrySuccess', {
+          // inc emitting EntryID param above
+          //x:y opt
+        });
+      });
+  
+      socket.on('removeEntry', function(err, entry){
+        if (err) throw err;
+        //
+        socket.emit('removeEntrySuccess', {
+          //x:y opt
+        });
+      });
+          
+    });
+  
+
+//    socket.on('disconnect', function(..socket..) {
+      // do disconnect event research
+      // log the disconnect to a global json.. (reasons?)
+      // socket.on disconnect client code = ur in offline mode / read only
+//    })
+
+  }); // close 'login' socket
+  
+}); // closes socket.io
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// I THINK : this whole make a json file thing is only useful for API calls ...
 // // on initial load only -> turn data into a seperate json file ...
 // var jsonArtists = JSON.stringify(artists, null, 2); // additional params to write pretty json
 // fs.writeFile('public/json/artists.json', jsonArtists, function (err) {
@@ -39,128 +216,6 @@ var app = connect()
 //   if (err) throw err;
 //   console.log('titles saved!');
 // });
-
-
-// SOCKET.IO
-// wait for a client to connect
-// once connection happens, socket object created, run socket functions
-io.sockets.on('connection', function (socket) {
-  
-      // socket.on('initial connection', function (from, msg) {
-      //   console.log('I received an itial connection req ', from, ' saying ', msg);
-      //   socket.emit('initial connxtion', {data: 'the post stuff'})
-      // });
-
-  MongoClient.connect('mongodb://localhost/metome', function(err, db) {
-    if (err) throw err;
-    console.log("Connected to db");
-      
-    // represents collection/user id
-    var collection = db.collection('pirijan'); //switch to user var
-    // unique record id
-    var idnum = "5279262e74d92da751eb2b8e"
-    var record = 'ObjectId(' + idnum + ')'
-    
-    // display number of records
-    collection.count(function(err, count) {
-      console.log("There are " + count + " records.");
-    })
-
-  
-  // when the client emits 'some event' , call the callback func w data (data sent from client)
-    socket.on('contentEdited', function (newContent) {
-      // console.log(newContent);
-      
-      // fs.writeFileSync('public/json/artists.json', newcontent, String, function(err){
-      //   if (err) throw err;
-      //   console.log('successfully written in: ' + newcontent)
-      // })
-      
-      // pipe it into writestream...
-      // .pipe(fs.createWriteStream(pathToFile)) //write to disk as data arrives.
-      // .on('end', function () {
-         //done
-         // emit 'saved' event
-  
-         
-  
-         
-  
-      //update record
-      collection.update({ _id : record}, {$set: {content:newContent}}, {w:1}, function(err, result) {
-        if (err) throw err;
-        
-        console.log('record ' + record + ' successfully updated :)');
-        
-        var currentRecord = collection.find({ _id : record })
-        console.log(currentRecord);
-      });
-      
-    }); // close mongo record update connection
-  
-         
-  }); // close socket listening for contentEdited
-
-
-
-
-// pass this fucker back to replace the old content in the json. callback -> emit when write complete.
-    // should result in {content : 'newvalue..'    
-    // then we emit a msg back to the same client. 
-    // 'event'=what the client is listening for.
-    // 2nd arg = the data we want to send along with the message
-//    socket.emit('event', { some: 'data' });
-  // });
-  
-  // socket.on('disconnect', function() {
-  //   // log the disconnect 
-  // })
-  
-});
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

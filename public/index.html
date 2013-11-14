@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Mongoland</title>
+  <title>Metome Prototype</title>
   <link rel="stylesheet" type="text/css" href="style.css" />
   <script src="libs/socket.io.min.js"></script>
   <script src="libs/jquery-2.0.3.js"></script>
@@ -11,23 +11,41 @@
 <body>
   
 
-<h1 class='title'>metome entry</h1>
+<h1>metome prototype</h1>
 
-<div class="status">zZz</div>
+<!-- + New Entry -->
 
-<div class="editable" contenteditable="true">  
-  
+<div class="entries">
+  <div class="newEntry">+ New Entry</div>
+  <ul class="entriesList"> 
+    <!-- li's inserted from script -->
+  </ul> <!-- test: oldest at bottom (-1) -->
+</div>
+
+<hr>
+
+<div class="temps"> <!-- TEMP trigger -->
+  <div class="titlestemp"><b><u>entries list trigger</u></b></div> 
+</div><br/><br/>
+
+
+<div class="controls">
+  <div class="status">zZz</div><!-- TODO delta inserted by script -->  
+  <div class="entryDate"></div> <!-- inserted from script -->
+</div>
+
+<article class="entry"> <!-- TODO add db id pulled in db/initialization -->
+
   <!-- h2 inserted from script -->
-  <div class="title">
-    <h2></h2>
-  </div>
+  <section class="title" contenteditable="true"><h2></h2></section>
   
   <!-- p contents from script -->
-  <div class="content">
-    <p></p>
-  </div>
+  <section class="content" contenteditable="true"><p></p></section>
+  
 
-</div>  
+</article>  
+
+<!-- TODO list all post titles in li- formatted the right way -->
 
 </body>
 </html>
