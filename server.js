@@ -27,15 +27,15 @@ io.sockets.on('connection', function(socket) {
     
     MongoClient.connect('mongodb://localhost/metome', function(err, db) {
       if (err) throw err;  
-      var collection = db.collection(user); 
+      var collection = db.collection(user);
     
-      // listen for titles request      
-      socket.on('entries', function(){        
-        collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) { // query db -> get titles in reverse order by id/cdate -> convert to array -> make titles object [{x,y}, {x,y}]
-          if (err) throw err;
-          socket.emit('entriesSuccessful', titles)
-          console.log(titles)
-        });
+      collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) { // query db -> get titles in reverse order by id/cdate -> convert to array -> make titles object [{x,y}, {x,y}]
+        if (err) throw err;
+        socket.emit('entriesSuccessful', titles)
+      });
+
+      // listen for titles request  
+      socket.on('entries', function(){   
       });
       
       // load individual entry
@@ -131,39 +131,67 @@ io.sockets.on('connection', function(socket) {
       
       socket.on('newEntry', function(err){
         if (err) throw err;
-        //
-        // get entryID
-        socket.emit('newEntrySuccess', {
-          // inc emitting EntryID param above
-          //x:y opt
-        });
-      });
-  
-      socket.on('removeEntry', function(err, entry){
-        if (err) throw err;
-        //
-        socket.emit('removeEntrySuccess', {
-          //x:y opt
-        });
-      });
+        // make new mongo record in user collection
+        // November 14, 2013
+        // change doc defaults to span class ph 'text'
+        var document =  {title:'', content:''}
+        
+        collection.insert(document, function(err, entry) {
+          if (err) throw err;
           
-    });
+          console.log("Record added as "+entry[0]._id);
+          var entryID = entry[0]._id
+          
+          socket.emit('newEntrySuccess', entryID);
+        });
+
+      });
   
-
-//    socket.on('disconnect', function(..socket..) {
-      // do disconnect event research
-      // log the disconnect to a global json.. (reasons?)
-      // socket.on disconnect client code = ur in offline mode / read only
-//    })
-
-  }); // close 'login' socket
+      socket.on('removeEntry', function(entryID){
+        collection.remove( 
+          { '_id': ObjectId ( entryID ) }, 
+          function(err){
+            if (err) throw err;
+            console.log('record deleted: ' + entryID); // DEBUG
+            socket.emit('removeEntrySuccess', entryID);
+          });
+      });
+      
+      
+      socket.on('disconnect', function(){
+        console.log('socket.io disconnect event fired') // DEBUG
+        //
+        // log the disconnect to a global json.. (reasons?, also needs to include user, entryID, time)
+        // socket.emit disconnect client code = ur in offline mode / read only
+        // fired in all cases when client closed.
+        // for reconnect, you have to use the 'connection' event
+      })  
+      
+  
+          
+    }); // close mongo
+  
+  }); // close user 'login' socket
   
 }); // closes socket.io
 
 
+// TODO 
+// November 14, 2013
+// refactor out functions here (client style)
 
 
-
+// BUG p wrapping new line issue - too aggressive with the p's 
+// MOVE TO SERVER as part of textfilter 
+  // $('.content[contenteditable]').on('keyup', function(event) {
+  //   if(event.which == 13) // enter key
+  //     console.log('wrap fired'); // DEBUG
+  //     $(".content").contents().filter(function() {
+  //       return this.nodeType == 3;
+  //     }).wrap('<p></p>');
+  // });
+// Or something more regex-y
+//
 
 
 

@@ -1,0 +1,34 @@
+<div class="entry" data-id="">
+
+  <div class="entry-meta">
+    <div class="status"></div> <!-- date and save from script-->    
+    <div class="delete">
+      Delete      
+    </div>
+    <div class="destroyCancel hidden">
+      <span class="remove">Destroy</span> / <span class="cancel">Cancel</span>
+    </div>
+    <div class="done">
+      Done
+    </div>
+  </div> 
+
+  <div class="title" contenteditable="true"></div>
+  <div class="content" contenteditable="true"></div>
+
+</div>
+
+<script>
+  // delete button view logic
+  $('.delete').on('click', function() {
+    $('.delete').addClass('hidden');
+    $('.destroyCancel').removeClass('hidden');
+  });
+  
+  // cancel button view logic
+  $('.cancel').on('click', function() {
+    $('.delete').removeClass('hidden');
+    $('.destroyCancel').addClass('hidden');
+  });
+
+</script>

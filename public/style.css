@@ -6,6 +6,7 @@
 
 [contenteditable="true"] {
   background-color: lightgrey;
+  min-height: 20px;
 }
 
 [contenteditable="true"]:hover {
@@ -16,7 +17,7 @@
   outline: none;
 }
 
-.entriesList li:hover , .temps:hover{
+.entriesList li:hover , .temps:hover, .newEntry{
   text-decoration: underline;
   cursor: pointer;
 }
@@ -24,4 +25,64 @@
 .newEntry {
   color: #5200AE;
   font-weight: bold;
+}
+
+/* .saved {
+  color: grey;
+  -webkit-animation-name: fadeOut;
+}
+
+.animated{
+  -webkit-animation-fill-mode:both;
+  -webkit-animation-duration:1s;
+}
+
+@-webkit-keyframes fadeOut {
+  0% {opacity: 1;}	100% {opacity: 0;}
+}
+ */
+
+.hidden {
+  display: none;
+}
+
+.title :empty:before {
+  content:"placeholder";
+  color: grey;
+}
+
+.title {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.status {
+  color: grey;
+  font-size: 12px;
+}
+
+.done {
+  background-color: #5200AE;
+  color: white;
+  display: inline-block;
+  padding: 5px;
+}
+
+.done:hover {
+  cursor: pointer;
+  /* active color = lighter purple? */
+}
+
+.remove {
+  color: #F08C8C;
+  cursor: pointer;
+}
+
+.cancel {
+  color: #5215AB;
+  cursor: pointer;
+}
+
+.destroy:hover, .cancel:hover, .delete:hover {
+  text-decoration: underline;
 }
