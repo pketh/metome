@@ -1,19 +1,20 @@
 /* install fancy grunt watch thing for vendor prefix free */
 
-.entry {
-  width: 400px;
+.title {
+  font-size: 24px;
+  margin-bottom: 10px;
 }
 
-[contenteditable="true"] {
-  background-color: lightgrey;
-  min-height: 20px;
+.title, .content {
+    background-color: #FAE0F5;
+    width: 400px;
+    outline-width:0;
+    min-height: 20px;
+    border: 0;
+    line-height: 32px;
 }
 
-[contenteditable="true"]:hover {
-  background-color: rgb(233, 233, 233);
-}
-
-[contenteditable="true"]:focus {
+.title:focus, .content:focus {
   outline: none;
 }
 
@@ -27,34 +28,16 @@
   font-weight: bold;
 }
 
-/* .saved {
-  color: grey;
-  -webkit-animation-name: fadeOut;
-}
-
-.animated{
-  -webkit-animation-fill-mode:both;
-  -webkit-animation-duration:1s;
-}
-
-@-webkit-keyframes fadeOut {
-  0% {opacity: 1;}	100% {opacity: 0;}
-}
- */
-
 .hidden {
   display: none;
 }
 
-.title :empty:before {
+/* .title :empty:before {
   content:"placeholder";
   color: grey;
 }
-
-.title {
-  font-size: 24px;
-  margin-bottom: 10px;
-}
+ */
+ 
 
 .status {
   color: grey;
@@ -70,7 +53,6 @@
 
 .done:hover {
   cursor: pointer;
-  /* active color = lighter purple? */
 }
 
 .remove {

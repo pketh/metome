@@ -1,5 +1,19 @@
-<div class="entry" data-id="">
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="entry" data-id="">
   <div class="entry-meta">
     <div class="status"></div> <!-- date and save from script-->    
     <div class="delete">
@@ -12,10 +26,8 @@
       Done
     </div>
   </div> 
-
-  <div class="title" contenteditable="true"></div>
-  <div class="content" contenteditable="true"></div>
-
+  <div class="title" contenteditable="true" data-placeholder="Type your title"></div>
+  <div class="content" contenteditable="true" data-placeholder="Type your entry"></div>
 </div>
 
 <script>
@@ -30,5 +42,4 @@
     $('.delete').removeClass('hidden');
     $('.destroyCancel').addClass('hidden');
   });
-
 </script>
