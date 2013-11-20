@@ -1,33 +1,25 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <div class="entry" data-id="">
+  
   <div class="entry-meta">
-    <div class="status"></div> <!-- date and save from script-->    
+    <div class="status"></div> <!-- date and save from script-->
     <div class="delete">
-      Delete      
+      Delete
     </div>
     <div class="destroyCancel hidden">
       <span class="remove">Destroy</span> / <span class="cancel">Cancel</span>
     </div>
-    <div class="done">
-      Done
-    </div>
   </div> 
-  <div class="title" contenteditable="true" data-placeholder="Type your title"></div>
-  <div class="content" contenteditable="true" data-placeholder="Type your entry"></div>
+  
+  <br>
+  
+  <div class="entryEditor">
+    <textarea class="title" autocomplete="off" placeholder="Type your title"></textarea>
+    <div class="cover" data-hasCover="true">
+      <span class="addCover">+</span>
+    </div>
+    <textarea class="content" autocomplete="off" placeholder="Type your content"></textarea>
+  </div>
+  
 </div>
 
 <script>
