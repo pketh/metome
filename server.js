@@ -6,21 +6,67 @@
 
 var MongoClient = require('mongodb'),
   ObjectId = require('mongodb').ObjectID,
-  connect = require('connect'),
+  express = require('express'),
   http = require('http'),
   io = require('socket.io').listen(8000),
-  fs = require('fs');
+  fs = require('fs'),
+  inspect = require('util').inspect,
+  Busboy = require('busboy');
+
   // --> npm install lean mean router here ..
   // --> auth
 
 io.configure('development', function(){
   io.set('log level', 2); // default is 3 (shows full debug)
 });
-    
-var app = connect()
-  .use(connect.logger('dev'))
-  .use(connect.static('public'))
+
+var app = express()
+  .use(express.logger('dev'))
+  
+  .post('/uploads', function(req, res){
+    var infiles = 0, outfiles = 0, done = false,
+        busboy = new Busboy({ headers: req.headers });
+    console.log('Start parsing form ...');
+    busboy.on('file', function(fieldname, file, filename, encoding, mimetype) {
+      ++infiles;
+      onFile(fieldname, file, filename, function() {
+        ++outfiles;
+        if (done)
+          console.log(outfiles + '/' + infiles + ' parts written to disk');
+        if (done && infiles === outfiles) {
+          // ACTUAL EXIT CONDITION
+          console.log('All parts written to disk');
+          res.writeHead(200, { 'Connection': 'close' });
+          res.end("That's all folks!");
+        }
+      });
+    });
+    busboy.on('end', function() {
+      console.log('Done parsing form!');
+      done = true;
+    });
+    req.pipe(busboy);
+  })
+
+  .use(express.static(__dirname + '/public'))
+  
   .listen(3000);
+
+function onFile(fieldname, file, filename, next) {
+  // or save at some other location
+  var writeStream = fs.createWriteStream(__dirname + '/public/uploads/'); // change os.tmpDir ... or move and flush after
+  file.on('end', function() {
+    console.log(fieldname + '(' + filename + ') EOF');
+  });
+  writeStream.on('close', function() {
+    console.log(fieldname + '(' + filename + ') written to disk');
+    next();
+  });
+  console.log(fieldname + '(' + filename + ') start saving');  
+  // This pipes the POST data to the file
+  file.pipe(writeStream);
+}
+
 
 // events
 io.sockets.on('connection', function(socket) {
@@ -122,8 +168,6 @@ io.sockets.on('connection', function(socket) {
   }); // close user 'login' socket
   
 }); // closes socket.io
-
-
 
 
 

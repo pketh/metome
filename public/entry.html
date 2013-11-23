@@ -6,7 +6,7 @@
       Delete
     </div>
     <div class="destroyCancel hidden">
-      <span class="remove">Destroy</span> / <span class="cancel">Cancel</span>
+      <span class="destroy">Destroy</span> / <span class="cancel">Cancel</span>
     </div>
   </div> 
   
@@ -14,9 +14,17 @@
   
   <div class="entryEditor">
     <textarea class="title" autocomplete="off" placeholder="Type your title"></textarea>
-    <div class="cover" data-hasCover="true">
-      <span class="addCover">+</span>
-    </div>
+    <div class="cover" data-hasCover="false">
+      
+      <span class="addCover">
+        <form action="/uploads" method="post" enctype="multipart/form-data">
+          <input class="input" type="file" onchange="this.form.submit()" name="file">
+          <img class="add" src="images/add.svg">
+        </form>
+      </span>
+
+  </div> <!-- closing cover -->
+  
     <textarea class="content" autocomplete="off" placeholder="Type your content"></textarea>
   </div>
   
@@ -33,5 +41,10 @@
   $('.cancel').on('click', function() {
     $('.delete').removeClass('hidden');
     $('.destroyCancel').addClass('hidden');
+  });
+    
+  // trigger input on + img click
+  $('.add').on('click', function(){
+    $('.coverInput').click()
   });
 </script>
