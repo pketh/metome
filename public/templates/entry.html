@@ -1,0 +1,39 @@
+<!-- entry template -->
+
+<div class="entry" data-id="">
+  
+  <div class="entry-meta">
+    <div class="status"></div> <!-- progress bar from script -->
+    <div class="delete">
+      Delete
+    </div>
+    <div class="destroyCancel hidden">
+      <span class="destroy">Destroy</span> / <span class="cancel">Cancel</span>
+    </div>
+  </div>
+  
+  <br>
+  
+  <div class="entryEditor">
+    
+    <!-- !! server to eval on load whether image present or not and adjust classes display accordingly -->
+    
+    <!-- title -->
+    <textarea class="title" autocomplete="off" placeholder="Type your title"></textarea>
+    
+    <!-- file -->
+    <div class="fileContainer">
+        <div class="assetPreloader hidden"></div>
+        <input class="input hidden" type="file" accept="image/gif, image/jpeg, image/png">
+        <div class="sendFile"></div>
+        <div class="file hidden">
+        </div>
+    </div>
+    
+        
+    <!-- content -->
+    <textarea class="content transition" autocomplete="off" placeholder="Type your content"></textarea>
+    
+  </div>
+  
+</div>

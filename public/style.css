@@ -1,5 +1,16 @@
 /* install fancy grunt watch thing for vendor prefix free */
 
+.hidden {
+  display: none !important;
+}
+
+.transition {
+  -webkit-transition: all .1s;
+  -moz-transition: all .1s;
+  -o-transition: all .1s;
+  transition: all .1s;
+}
+
 .metome {
   width: 90%;
   position: relative;
@@ -8,13 +19,13 @@
 }
 
 .title, .content {
-    background-color: transparent;
-    width: 100%;
-    outline-width:0;
-    border: 0;
-    overflow: hidden;
-    resize: none;
-    font-family: Times, serif;
+  background-color: transparent;
+  width: 100%;
+  outline-width:0;
+  border: 0;
+  overflow: hidden;
+  resize: none;
+  font-family: Times, serif;
 }
 
 .title {
@@ -23,10 +34,10 @@
 }
 
 .content {
-    font-size: 16px;
-    height: 100%;
-    word-wrap: break-word;
-    min-height: 400px
+  font-size: 16px;
+  height: 100%;
+  word-wrap: break-word;
+  min-height: 400px
 }
 
 .title:focus, .content:focus {
@@ -60,13 +71,13 @@ li {}
   display: inline-block;
 }
 
-.hidden {
-  display: none;
-} 
-
 .status {
   color: grey;
   font-size: 12px;
+}
+
+.delete {
+  display: inline;
 }
 
 .destroy {
@@ -78,8 +89,8 @@ li {}
 }
 
 .destroy:hover, .cancel:hover, .delete:hover {
+  text-decoration: underline;
   cursor: pointer;
-  opacity: 0.8;
 }
 
 .entry {
@@ -87,14 +98,80 @@ li {}
   margin-right: auto;
   width: 80%;
   max-width: 666px;
+  position: relative;
 }
 
-.add-btn {
-  margin-left: 100%;
+
+/* --- show/upload file section --- */
+
+
+.fileContainer {
+  position: relative;
+  clear: both;
+  margin-top: 50px;
+  margin-bottom: 55px;
+}
+
+.withImage {
+  margin-top: 50px;
+  margin-bottom: 55px;
+}
+
+.file img {
+  max-height: 666px;
+  max-width: 666px;
+}
+
+.assetPreloader {
+  position: absolute;
+  height: 0px;
+  width: 0px;
+  background: url('assets/sendFile.svg'), url('assets/sendFile-hover.svg'), url('assets/replaceFile.svg'), url('assets/replaceFile-hover.svg');
+}
+
+.sendFile {
+  background-image: url('assets/sendFile.svg');
+  background-repeat: no-repeat;
+  width: 34px;
+  height: 22px;
   cursor: pointer;
-  opacity: .13;
+  padding-right: 10px;
 }
 
-.add-btn:hover {
-  opacity: .23;
+.sendFile:hover {
+  background-image: url('assets/sendFile-hover.svg');
 }
+
+.replaceFile {
+  background-image: url('assets/replaceFile.svg');
+  position: absolute;
+  /* left inherited from script l~220 */
+}
+
+.replaceFile:hover {
+  background-image: url('assets/replaceFile-hover.svg');
+}
+
+
+progress {
+  width: 60px;
+  height: 7px;
+  margin-left: 10px;
+  padding-bottom: 12px
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
