@@ -201,37 +201,45 @@ $(document).ready(function () {
   
   function sendFile(entryID) {
     $('input').change(function() {
-      
-      // 182635 = 183kb
-      // 1000000 = 1mb
-      // 10000000 = 10mb
-      // 25000000 = 25mb
       var fileSize = this.files[0].size
-      console.log(fileSize)
-      // if size < 10 do this (else do file too big error msg)
-      if (fileSize < 25000000) {
-        // if size okay do this..
+      var fileSizeLimit = 15000000 // 15mb
+      // file size gate
+      if (fileSize <= fileSizeLimit) {
+        // file size is okay:
+        // render preview blob
+        var windowURL = window.URL || window.webkitURL
+        var blobURL = windowURL.createObjectURL(this.files[0])
+        $('.file').removeClass('hidden');
+        $('.cover').removeClass('hidden');
+        $('.btn-newFile').addClass('btn-replaceFile');
+        $('.fileSizeError').addClass('hidden')
+        $('.cover').attr('src', blobURL);
+        // emit base64 code
+        var file64 = document.querySelector('input[type=file]').files[0];
+        var reader = new FileReader();
+        reader.readAsDataURL(file64);
+        reader.onloadend = function() {
+          var src = reader.result;
+          var fileName = $('input[type=file]').val().split('\\').pop();
+          socket.emit('sendFile', src, fileName, fileSize, entryID);
+        }
       } else {
-        // show error
-      }
+        // file is too big:
+        // render the fileSizeError message
+        $('.file').removeClass('hidden');
+        $('.cover').addClass('hidden');
+        $('.fileSizeError').removeClass('hidden')
+        // var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000) // 15mb
+        // var fileSizeConverted = Math.round(fileSize / 1000000)
+        // console.log('file too big ' + fileSizeConverted + 'the limit is ' + fileSizeLimitConverted)
+        
+        // hide cover (addClass hidden)
+        // show fileSizeError
+        // show error . convert bytes to rounded mb version . "can't do y bc x"
+        
+      };
 
-      // setup blob
-      var windowURL = window.URL || window.webkitURL
-      var blobURL = windowURL.createObjectURL(this.files[0])
-      // render preview
-      $('.file').removeClass('hidden');
-      $('.btn-newFile').addClass('btn-replaceFile');
-      $('.cover').attr('src', blobURL);
-      // emit base64 code
-      var file64 = document.querySelector('input[type=file]').files[0];
-      var reader = new FileReader();
-      reader.readAsDataURL(file64);
-      reader.onloadend = function() {
-        var src = reader.result;
-        var fileName = $('input[type=file]').val().split('\\').pop();
-        socket.emit('sendFile', src, fileName, fileSize, entryID);
-      }
-    });
+    }); // close input change event
   }
   socket.on('sendFileSuccess', function(entryID){
     // server tells us that file upload complete here (and path added to db)

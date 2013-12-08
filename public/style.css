@@ -1,5 +1,12 @@
 /* install fancy grunt watch thing for vendor prefix free */
 
+.assetPreloader {
+  position: absolute;
+  height: 0px;
+  width: 0px;
+  background: url('assets/sendFile.svg'), url('assets/sendFile-hover.svg'), url('assets/replaceFile.svg'), url('assets/replaceFile-hover.svg');
+}
+
 .hidden {
   display: none !important;
 }
@@ -108,16 +115,20 @@ li {}
   margin-bottom: 35px;
 }
 
-.file img {
+.cover {
   max-height: 666px;
   max-width: 100%;
 }
 
-.assetPreloader {
-  position: absolute;
-  height: 0px;
-  width: 0px;
-  background: url('assets/sendFile.svg'), url('assets/sendFile-hover.svg'), url('assets/replaceFile.svg'), url('assets/replaceFile-hover.svg');
+.fileSizeError {
+  width: 346px;
+  /* height: 96px; */
+  padding: 12px 28px;
+  background-color: #F0F0F0;
+  border-radius: 12px;
+}
+.fileSizeError p:first-child {
+  font-weight: bold;
 }
 
 .btn-newFile {
@@ -128,15 +139,12 @@ li {}
   cursor: pointer;
   padding-right: 10px;
 }
-
 .btn-newFile:hover {
   background-image: url('assets/sendFile-hover.svg');
 }
-
 .btn-replaceFile {
   background-image: url('assets/replaceFile.svg');
 }
-
 .btn-replaceFile:hover {
   background-image: url('assets/replaceFile-hover.svg');
 }
