@@ -3,13 +3,16 @@
 <div class="entry" data-id="">
   
   <div class="entry-meta">
-    <div class="status"></div> <!-- progress bar from script -->
+    <div class="status">
+      <progress class="hidden"></progress>
+    </div>
     <div class="delete">
       Delete
     </div>
     <div class="destroyCancel hidden">
       <span class="destroy">Destroy</span> / <span class="cancel">Cancel</span>
     </div>
+    <div class="btn-newFile"></div>
   </div>
   
   <br>
@@ -23,10 +26,9 @@
     
     <!-- file -->
     <div class="fileContainer">
-        <div class="assetPreloader hidden"></div>
         <input class="input hidden" type="file" accept="image/gif, image/jpeg, image/png">
-        <div class="sendFile"></div>
         <div class="file hidden">
+          <img class="cover" src="">
         </div>
     </div>
     

@@ -51,7 +51,7 @@
   max-height: 666px;
 }
 
-.entriesList {
+.metome {
   margin-left: auto;
   margin-right: auto;
   width: 80%;
@@ -94,10 +94,6 @@ li {}
 }
 
 .entry {
-  margin-left: auto;
-  margin-right: auto;
-  width: 80%;
-  max-width: 666px;
   position: relative;
 }
 
@@ -108,18 +104,13 @@ li {}
 .fileContainer {
   position: relative;
   clear: both;
-  margin-top: 50px;
-  margin-bottom: 55px;
-}
-
-.withImage {
-  margin-top: 50px;
-  margin-bottom: 55px;
+  margin-top: 20px;
+  margin-bottom: 35px;
 }
 
 .file img {
   max-height: 666px;
-  max-width: 666px;
+  max-width: 100%;
 }
 
 .assetPreloader {
@@ -129,7 +120,7 @@ li {}
   background: url('assets/sendFile.svg'), url('assets/sendFile-hover.svg'), url('assets/replaceFile.svg'), url('assets/replaceFile-hover.svg');
 }
 
-.sendFile {
+.btn-newFile {
   background-image: url('assets/sendFile.svg');
   background-repeat: no-repeat;
   width: 34px;
@@ -138,17 +129,15 @@ li {}
   padding-right: 10px;
 }
 
-.sendFile:hover {
+.btn-newFile:hover {
   background-image: url('assets/sendFile-hover.svg');
 }
 
-.replaceFile {
+.btn-replaceFile {
   background-image: url('assets/replaceFile.svg');
-  position: absolute;
-  /* left inherited from script l~220 */
 }
 
-.replaceFile:hover {
+.btn-replaceFile:hover {
   background-image: url('assets/replaceFile-hover.svg');
 }
 

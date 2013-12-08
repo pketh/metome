@@ -1,6 +1,6 @@
 // Metome.io Server
 
-
+// ┬──┬ ◡ﾉ(° -°ﾉ)
 
 
 
@@ -36,14 +36,12 @@ io.sockets.on('connection', function(socket) {
     MongoClient.connect('mongodb://localhost/metome', function(err, db) {
       if (err) throw err;
       var collection = db.collection(user);
-    
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // entries successful emits on connect/load bc not gated
+      
+      // entries successful emits on connect
       collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
         if (err) throw err;
         socket.emit('entriesSuccessful', titles);
       });
-
       
       // load individual entry
       socket.on('entry', function(entryID){
@@ -89,18 +87,24 @@ io.sockets.on('connection', function(socket) {
           }
         );
       });
-      
-      // receive file uploads
-      // TASKS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // file type validation (are these real images) - IF not, [emit invalidFile]
-      // read and write the file to user path (755)
-      //    emit upload progress (with entryID) (0.0 -> 1.0) as we go..
-      // make resized version, and thumb version : http://www.instapaper.com/read/433654980
-      // save both paths to db collection update w entry ID
-      // emit sendFileSuccess with entryID to client
-      
-      socket.on('sendFile', function(src, entryID) {
-        console.log('sendFile hit ' + src + ' entryID = ' + entryID)
+
+
+      socket.on('sendFile', function(src, fileName, fileSize, entryID) {
+        console.log('sendFile hit ' + src + ' entryID = ' + entryID);
+        console.log(fileName);
+        
+        // - emit upload progress (with entryID) (0.0 -> 1.0) - http://stackoverflow.com/questions/14454193/is-it-possible-to-show-actual-progress-from-async-method-in-node-js
+        
+        
+        // - read and write the file to tmp path (755) - fs read + writestream
+        // - file type validation (are these real images?)
+        // - make resized version, and thumb version - https://github.com/thomaspeklak/express-upload-resizer
+        // - save both versions to specific folders w names
+        // - add the path(s) to db collection update w entry ID
+        // - delete upload from tmp path
+        // - emit sendFileSuccess with entryID to client
+        
+        
         
         //path to store uploaded files (NOTE: presumed you have created the folders -> create user folder on new acct creation)
         // var fileName = __dirname + '/public/uploads/' + user + '/'+ name;
@@ -124,6 +128,7 @@ io.sockets.on('connection', function(socket) {
             // });
           // })
         // });
+        socket.emit('sendFileSuccess', entryID);
       });
       // http://stackoverflow.com/questions/14788898/save-a-image-using-nodejs-expressjs-and-socket-io
       
@@ -158,8 +163,7 @@ io.sockets.on('connection', function(socket) {
         // for reconnect, you have to use the 'connection' event
       })
       
-  
-          
+    
     }); // close mongo
   
   }); // close user 'login' socket
@@ -207,7 +211,7 @@ io.sockets.on('connection', function(socket) {
 
 
 // I THINK : this whole make a json file thing is only useful for API calls ...
-// // on initial load only -> turn data into a seperate json file ...
+// and backup prep, and offline manifest prep (txt only for offline from scratch mode)
 // var jsonArtists = JSON.stringify(artists, null, 2); // additional params to write pretty json
 // fs.writeFile('public/json/artists.json', jsonArtists, function (err) {
 //   if (err) throw err;

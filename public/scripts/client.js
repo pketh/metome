@@ -1,6 +1,6 @@
 // Metome.io Client
 
-
+// (╯°□°）╯︵ ┻━┻
 
 
 
@@ -72,11 +72,6 @@ $(document).ready(function () {
           delay: 400
         });
         
-        // remove entry
-        $('.remove').on('click', function(){
-          socket.emit('removeEntry', entryID);
-        });
-        
         // delete button view logic
         $('.delete').on('click', function() {
           $('.delete').addClass('hidden');
@@ -88,9 +83,16 @@ $(document).ready(function () {
           $('.delete').removeClass('hidden');
           $('.destroyCancel').addClass('hidden');
         });
-                
+        
+        // destroy/remove entry
+        $('.destroy').on('click', function(){
+          var entryID= $('.entry').attr('data-id');
+          console.log('delete triggered for ' + entryID)
+          socket.emit('removeEntry', entryID);
+        });
+
         // trigger input on + img click
-        $('.sendFile').on('click', function(){
+        $('.btn-newFile').on('click', function(){
           $('.fileContainer input').click()
         });
         
@@ -128,26 +130,29 @@ $(document).ready(function () {
 
 
   socket.on('disconnect', function(){
+    console.log("I'm disconnected")
     //'connection error'
     // switch into 'read only mode' = no text area editing / diff styling (greyed out a bit)
     // "disconnect" is emitted when the socket disconnected
-    http://stackoverflow.com/questions/3297923/make-textarea-readonly-with-jquery
+    // http://stackoverflow.com/questions/3297923/make-textarea-readonly-with-jquery
   });
 
   socket.on('reconnecting', function(){
+    console.log("I'm reconnecting")
     // reconnecting - is emitted when the socket is attempting to reconnect with the server
   });
   
   socket.on('reconnect_failed', function(){
+    console.log("My reconnect failed")
     // reconnect failed - emitted when socket.io fails to re-establish a working
   });
 
   socket.on('reconnect', function(){
+    console.log("I reconnected")
     // Q: reconnect fires when connection emits (automatically?)
     // reconnect - emitted when socket.io successfully reconnected to the server
     // on a reconnect event switch contenteditables back to true
     // make sure the list doesn't append again to replicate on top of existing
-    console.log('reconnect event hit')
   });
 
   // buttons / ui (delete and addCover) visible on load
@@ -190,44 +195,48 @@ $(document).ready(function () {
   // back to viewing the entries list
   function viewEntries(entryID) { // triggered by browser back. or deleting an entry
     console.log('verifying that viewEntries has ID: ' + entryID);
-    // move the view back to the entries list (do later)
+    // DO LATER: move the view back to the entries list
     $('.entry').remove();
   }
   
-  function sendFile(input, entryID) {
-    $(input).change(function() {
-      var file = this.files;
-      var src = '';
-      var myWin = window.URL || window.webkitURL;
-      src = myWin.createObjectURL(file[0]);
+  function sendFile(entryID) {
+    $('input').change(function() {
+      
+      // 182635 = 183kb
+      // 1000000 = 1mb
+      // 10000000 = 10mb
+      // 25000000 = 25mb
+      var fileSize = this.files[0].size
+      console.log(fileSize)
+      // if size < 10 do this (else do file too big error msg)
+      if (fileSize < 25000000) {
+        // if size okay do this..
+      } else {
+        // show error
+      }
+
+      // setup blob
+      var windowURL = window.URL || window.webkitURL
+      var blobURL = windowURL.createObjectURL(this.files[0])
+      // render preview
       $('.file').removeClass('hidden');
-      
-      // clear existing
-      $('.file img').remove();
-      $('progress').remove();
-      
-      // render preview and .replaceFile
-      $('.file').append('<img src="' + src + '" data-entryID="' + entryID + '">');
-      $('.file').waitForImages(function() {
-        var fileWidth = $('.file img').width() + 10
-        $('.sendFile').addClass('replaceFile').css('left', fileWidth);
-        $('.fileContainer').addClass('withImage')
-        $('.file img').data('entryID', entryID);
-      });
-      
-      // actual upload and render progress
-      $('.status').append('<progress class="progress" value="0" data-entryID="' + entryID + '"></progress>');
-      // send file to server
-      socket.emit('sendFile', src, entryID) // dont need src? probably cant use the blob path, do a traditional send?
-      // http://stackoverflow.com/questions/12817173/how-to-emit-a-file-through-socket-io
-      // ?after send?
-      
-      // THINK ABOUT RETINA preupload/thumb and post/server-side
+      $('.btn-newFile').addClass('btn-replaceFile');
+      $('.cover').attr('src', blobURL);
+      // emit base64 code
+      var file64 = document.querySelector('input[type=file]').files[0];
+      var reader = new FileReader();
+      reader.readAsDataURL(file64);
+      reader.onloadend = function() {
+        var src = reader.result;
+        var fileName = $('input[type=file]').val().split('\\').pop();
+        socket.emit('sendFile', src, fileName, fileSize, entryID);
+      }
     });
   }
-  socket.on('sendFileSuccess', function(){
-    window.URL.revokeObjectURL(file[0]);
-    // switch to drawing the img
+  socket.on('sendFileSuccess', function(entryID){
+    // server tells us that file upload complete here (and path added to db)
+    console.log('sendFileSuccess for ' + entryID);
+    $('progress').removeClass('hidden').attr('value', 0);
   });
       
   function loadEntry(entry, entryMonth, entryYear, entryID) {
@@ -273,17 +282,13 @@ $(document).ready(function () {
       var entryMonthStr = 'err';
       break;
     }
-    console.log('fetched entry template');
     $('.entry').attr('data-id', entryID);
     $('.entry .title').append(entry.title);
     $('.entry .content').append(entry.content);
-    $('.status').append('<span>' + entryMonthStr + ', ' + entryYear + '</span>');
-    console.log( 'printed entry for ' + entryID);
+    $('.status').prepend('<span>' + entryMonthStr + ', ' + entryYear + '</span>');
     $('.content').autosize();
-
-    // upload file (if no file uplaoded, else do some other function)
-    sendFile('input', entryID);
-
+    $('.title').focus();
+    sendFile(entryID);
   }
   
 
