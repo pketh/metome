@@ -6,4 +6,5 @@ A learning exercise to push a db entry down to the client (through JSON), and th
 - using mongo, node, client JS
 
 # TODO
-move the dependencies to a package.json ...
+- move the dependencies to a package.json ...
+- usage / how to run (basically, node server.js)
