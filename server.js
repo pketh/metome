@@ -3,26 +3,30 @@
 // ┬──┬ ◡ﾉ(° -°ﾉ)
 
 
-
+// Modules
 var MongoClient = require('mongodb'),
   ObjectId = require('mongodb').ObjectID,
   express = require('express'),
   http = require('http'),
   io = require('socket.io').listen(8000),
-  fs = require('fs');
+  fs = require('fs'),
+  siofu = require('socketio-file-upload');
   // --> auth http://www.senchalabs.org/connect/basicAuth.html
 
+// Configure
 io.configure('development', function(){
   io.set('log level', 2); // default is 3 (shows full debug)
 });
 
+// Start server
 var app = express();
+app.set('port', process.env.PORT || 3000);
 
 app.use(express.logger('dev'));
 app.use(express.static(__dirname + '/public'));
   // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
   // .use(express.multipart({ uploadDir: __dirname + '/public/uploads/' })) // http://www.senchalabs.org/connect/multipart.html
-app.listen(3000);
+app.listen(app.get('port'));
   // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
 
 
@@ -33,7 +37,11 @@ io.sockets.on('connection', function(socket) {
   socket.on('login', function(username){
     var user = username;
     
-    MongoClient.connect('mongodb://localhost/metome', function(err, db) {
+    var uploader = new siofu();
+    uploader.dir = __dirname + '/public/uploads/' + user + '/'
+    uploader.listen(socket);
+    
+    MongoClient.connect('mongodb://localhost/metome', function(err, db) { // make mongo address non-fixed? (hits a replicant on dev , prod on prod)
       if (err) throw err;
       var collection = db.collection(user);
       
@@ -87,28 +95,83 @@ io.sockets.on('connection', function(socket) {
           }
         );
       });
+      
+      // socket.on('initSendFile', function(){
+      //   // replace the old upload associated with the entry id
+      //   console.log('initSendFile hit!')
+      // })
+      
+      var uploadPath = __dirname + '/public/uploads/' + user + '/'
+      
+      
+      
+      uploader.on('progress', function(event){
+        console.log('progress') // event.buffer
+      });
+      
+      uploader.on('saved', function(event){
+        console.log('file saved')
+        // console.log(event.file);
+        // here's where I convert stuff and save S , M , L to db
+      });
+      
+      uploader.on('complete', function(event){
+        console.log('file transmission complete')
+      });
+      
+      uploader.on('error', function(event){
+        console.log('error from siofu uploader', event);
+      });
 
 
-      socket.on('sendFile', function(src, fileName, fileSize, entryID) {
-        console.log('sendFile hit ' + src + ' entryID = ' + entryID);
-        console.log(fileName);
+      // socket.on('sendFile', function(dataURI, fileType, fileName, fileSize, entryID) {
+      //
+      //   // adapted from http://net.tutsplus.com/tutorials/javascript-ajax/how-to-create-a-resumable-video-uploade-in-node-js/
+      //   console.log(dataURI + '\n');
+      //   console.log('Total file size is ' + fileSize + ' bytes\n');
+      //   console.log('File type is ' + fileType + '\n');
+      //   var newFilePath = __dirname + '/public/uploads/' + user + '/' + entryID + '.' + fileType
+      //   console.log(newFilePath + '\n');
+      //
+      //
+      //   var src = data uri stripped of front stuff;
+      //   console.log(src)
+      //
+      //   fs.writeFile(newFilePath, src, function (err) {
+      //     if (err) throw err;
+      //     console.log('It\'s saved! ' + entryID + '.' + fileType + '\n');
+      //     socket.emit('sendFileSuccess', entryID + '\n');
+      //   });
         
+        
+        // fs.writeFile(tempFile, src, "binary", function(err) {
+        //   if(err) {
+        //     console.log(err);
+        //   } else {
+        //     console.log("The file was saved!");
+        //     socket.emit('sendFileSuccess', entryID);
+        //   }
+        // });
+
+        // with siofu
+        
+
+
         // - emit upload progress (with entryID) (0.0 -> 1.0) - http://stackoverflow.com/questions/14454193/is-it-possible-to-show-actual-progress-from-async-method-in-node-js
-        
-        
         // - read and write the file to tmp path (755) - fs read + writestream
-        // - file type validation (are these real images?)
+        // [X] file type validation (are these real images? https://github.com/ctavan/express-validator ?)
         // - make resized version, and thumb version - https://github.com/thomaspeklak/express-upload-resizer
         // - save both versions to specific folders w names
         // - add the path(s) to db collection update w entry ID
-        // - delete upload from tmp path
-        // - emit sendFileSuccess with entryID to client
+        // - delete original upload from path
+        // - emit sendFileSuccess with entryID, and new paths to client
         
-        
-        
+
         //path to store uploaded files (NOTE: presumed you have created the folders -> create user folder on new acct creation)
-        // var fileName = __dirname + '/public/uploads/' + user + '/'+ name;
         // console.log('proposed ' + fileName)
+        // fs.exists('tempFile', function () {
+        //   console.log('entryId.png etc already exists. Delete it.');
+        // });
         
         // open file for appending (file is created if not exist). 0755 = permissions mode (user can write, everyone can read)
         // fd param = file descriptor = indicator for accessing a file (0=standard input(stdin), 1=stdout, 2=stderr(errror).
@@ -118,19 +181,11 @@ io.sockets.on('connection', function(socket) {
           // fs write = Write buffer to the file specified by fd.
           // null = offset from the beginning of file. nulls means the data will be written at current posn
           // in the callback : written = progress from buffer.
-          // fs.write(fd, buffer, null, 'Binary', function(err, written, buff) {
-            // fs.close(fd, function() {
-              // console.log(fileName + ' File saved successful!');
-              // TODO collection.update + has thumbs generated and also new thumbpath added to db
-              // TODO REAL file type validation must be done server side (for security)
-              // socket emit neeeds to be in the callback for the collection update
-                // socket.emit('sendFileProcessed'); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! new socket name. emits what? filename?
-            // });
-          // })
         // });
-        socket.emit('sendFileSuccess', entryID);
-      });
-      // http://stackoverflow.com/questions/14788898/save-a-image-using-nodejs-expressjs-and-socket-io
+        
+        // setTimeout(500) .. to simulate lag
+        // http://stackoverflow.com/questions/14788898/save-a-image-using-nodejs-expressjs-and-socket-io
+      // });
       
       // insert new record
       socket.on('newEntry', function(err){
@@ -162,6 +217,7 @@ io.sockets.on('connection', function(socket) {
         // fired in all cases when client closed.
         // for reconnect, you have to use the 'connection' event
       })
+      
       
     
     }); // close mongo
