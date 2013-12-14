@@ -1,7 +1,7 @@
 # Metome Covers
 ######################
-temp/
-public/uploads/
+temp/**
+public/uploads/**
 
 
 # Logs and databases
