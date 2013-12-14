@@ -3,15 +3,20 @@
 // ┬──┬ ◡ﾉ(° -°ﾉ)
 
 
-// Modules
+// Node Modules
 var MongoClient = require('mongodb'),
   ObjectId = require('mongodb').ObjectID,
   express = require('express'),
   http = require('http'),
   io = require('socket.io').listen(8000),
   fs = require('fs'),
-  siofu = require('socketio-file-upload');
+  exec = require('child_process').exec,
+  util = require('util');
   // --> auth http://www.senchalabs.org/connect/basicAuth.html
+  
+// Metome Modules
+// var settings
+// require('./metome_modules/settings.js')
 
 // Configure
 io.configure('development', function(){
@@ -23,9 +28,8 @@ var app = express();
 app.set('port', process.env.PORT || 3000);
 
 app.use(express.logger('dev'));
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + './public'));
   // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
-  // .use(express.multipart({ uploadDir: __dirname + '/public/uploads/' })) // http://www.senchalabs.org/connect/multipart.html
 app.listen(app.get('port'));
   // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
 
@@ -36,11 +40,7 @@ app.listen(app.get('port'));
 io.sockets.on('connection', function(socket) {
   socket.on('login', function(username){
     var user = username;
-    
-    var uploader = new siofu();
-    uploader.dir = __dirname + '/public/uploads/' + user + '/'
-    uploader.listen(socket);
-    
+
     MongoClient.connect('mongodb://localhost/metome', function(err, db) { // make mongo address non-fixed? (hits a replicant on dev , prod on prod)
       if (err) throw err;
       var collection = db.collection(user);
@@ -63,7 +63,7 @@ io.sockets.on('connection', function(socket) {
           socket.emit('entrySuccessful', entry, entryMonth, entryYear, entryID);
         });
       });
-
+      
       // write title on changes
       socket.on('titleEdited', function(newTitle, entryID) {
         collection.update(
@@ -96,96 +96,94 @@ io.sockets.on('connection', function(socket) {
         );
       });
       
-      // socket.on('initSendFile', function(){
-      //   // replace the old upload associated with the entry id
-      //   console.log('initSendFile hit!')
-      // })
-      
-      var uploadPath = __dirname + '/public/uploads/' + user + '/'
-      
-      
-      
-      uploader.on('progress', function(event){
-        console.log('progress') // event.buffer
+      // start file upload
+      var files = {}
+      socket.on('startSend', function(fileName, fileSize, entryID) {
+        console.log('startSend hit')
+        files[fileName] = { // create new entry in files {}
+          fileSize : fileSize,
+          data : '',
+          downloaded : 0
+        }
+        var fileWriting = files[fileName]
+        var tempPath = 'temp/' +  entryID + '-' + fileName
+        var place = 0 // stores where in the file we are up to
+
+        try{
+          var stat = fs.statSync(tempPath);
+          if(stat.isFile())
+          {
+            console.log(files[fileName])
+            console.log(fileWriting)
+            console.log(fileWriting['downloaded']) // try removing '' in property definitions
+            
+            fileWriting['downloaded'] = stat.size;
+            place = stat.size / 524288; // we're passing data in 1/2 mb increments
+            console.log('downloaded: ' + stat.size)
+            console.log('new place: ' + place)
+          }
+        }
+        catch(er){} // it's a new file
+        fs.open(tempPath, "a", 0755, function(err, fd){
+          if(err)
+          {
+            console.log(err);
+          }
+          else // requesting
+          {
+            fileWriting['handler'] = fd; //We store the file handler so we can write to it later
+            socket.emit('morePlease', place, entryID, {percent: 0}); // requesting more file pieces
+          }
+        });
+        
+        
+        socket.on('sendPiece', function(data, fileType, fileName, fileSize, entryID) {
+          console.log('sendPiece hit');
+          console.log(fileWriting); // December 14, 2013
+          
+          //
+          fileWriting['downloaded'] += data.length;
+          fileWriting['data'] += data;
+          if(fileWriting['downloaded'] == fileWriting['fileSize']) { //If File is Fully Uploaded
+            fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
+              // process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina).
+                // callback for processing complete(? - at least a console msg)
+              console.log(Writen);
+              console.log('file has been written to temp folder');
+              socket.emit('sendSuccessful', entryID);
+            });
+          }
+          else if(fileWriting['data'].length > 10485760){ //If the Data Buffer reaches 10MB
+            fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
+              fileWriting['data'] = ""; //Reset The Buffer
+              var place = fileWriting['downloaded'] / 524288;
+              var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100;
+              socket.emit('MorePlease', place, entryID, percent); // requesting more file pieces
+            });
+          }
+          else { // need more pieces please
+            var place = fileWriting['downloaded'] / 524288;
+            var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100;
+              socket.emit('morePlease', place, entryID, percent); // requesting more file pieces
+          }
+        
+        });
+
       });
       
-      uploader.on('saved', function(event){
-        console.log('file saved')
-        // console.log(event.file);
-        // here's where I convert stuff and save S , M , L to db
-      });
+      // sendpiece/'upload' event called every time a new block of data is read
+      // filereader sends pieces as it reads
+
+
+// !!!!!!!! implement morePlease ('moreData') on client . December 14, 2013
+
+
+
+
+      // var filePath = __dirname + '/public/uploads/' + user + '/' + name
+
+
       
-      uploader.on('complete', function(event){
-        console.log('file transmission complete')
-      });
-      
-      uploader.on('error', function(event){
-        console.log('error from siofu uploader', event);
-      });
-
-
-      // socket.on('sendFile', function(dataURI, fileType, fileName, fileSize, entryID) {
-      //
-      //   // adapted from http://net.tutsplus.com/tutorials/javascript-ajax/how-to-create-a-resumable-video-uploade-in-node-js/
-      //   console.log(dataURI + '\n');
-      //   console.log('Total file size is ' + fileSize + ' bytes\n');
-      //   console.log('File type is ' + fileType + '\n');
-      //   var newFilePath = __dirname + '/public/uploads/' + user + '/' + entryID + '.' + fileType
-      //   console.log(newFilePath + '\n');
-      //
-      //
-      //   var src = data uri stripped of front stuff;
-      //   console.log(src)
-      //
-      //   fs.writeFile(newFilePath, src, function (err) {
-      //     if (err) throw err;
-      //     console.log('It\'s saved! ' + entryID + '.' + fileType + '\n');
-      //     socket.emit('sendFileSuccess', entryID + '\n');
-      //   });
-        
-        
-        // fs.writeFile(tempFile, src, "binary", function(err) {
-        //   if(err) {
-        //     console.log(err);
-        //   } else {
-        //     console.log("The file was saved!");
-        //     socket.emit('sendFileSuccess', entryID);
-        //   }
-        // });
-
-        // with siofu
-        
-
-
-        // - emit upload progress (with entryID) (0.0 -> 1.0) - http://stackoverflow.com/questions/14454193/is-it-possible-to-show-actual-progress-from-async-method-in-node-js
-        // - read and write the file to tmp path (755) - fs read + writestream
-        // [X] file type validation (are these real images? https://github.com/ctavan/express-validator ?)
-        // - make resized version, and thumb version - https://github.com/thomaspeklak/express-upload-resizer
-        // - save both versions to specific folders w names
-        // - add the path(s) to db collection update w entry ID
-        // - delete original upload from path
-        // - emit sendFileSuccess with entryID, and new paths to client
-        
-
-        //path to store uploaded files (NOTE: presumed you have created the folders -> create user folder on new acct creation)
-        // console.log('proposed ' + fileName)
-        // fs.exists('tempFile', function () {
-        //   console.log('entryId.png etc already exists. Delete it.');
-        // });
-        
-        // open file for appending (file is created if not exist). 0755 = permissions mode (user can write, everyone can read)
-        // fd param = file descriptor = indicator for accessing a file (0=standard input(stdin), 1=stdout, 2=stderr(errror).
-        // Next, we open the file using open(). The r argument denotes that the file is being opened for reading. The open() callback function provides a file descriptor, fd for accessing the newly opened file. Inside the callback function, we define a buffer to hold the file’s contents. Notice that the buffer is initialized to the file’s size, which is stored in stats.size. Next, the file is read into the buffer using the read() function. The buffer now contains the raw data read from the file. In order to display the data, we must first convert it to a UTF-8 encoded string. Finally, the file contents are printed to the console, and the file is closed. http://www.sitepoint.com/accessing-the-file-system-in-node-js/
-        // fs.open(fileName, 'a', 0755, function(err, fd) {
-          // if (err) throw err;
-          // fs write = Write buffer to the file specified by fd.
-          // null = offset from the beginning of file. nulls means the data will be written at current posn
-          // in the callback : written = progress from buffer.
-        // });
-        
-        // setTimeout(500) .. to simulate lag
-        // http://stackoverflow.com/questions/14788898/save-a-image-using-nodejs-expressjs-and-socket-io
-      // });
       
       // insert new record
       socket.on('newEntry', function(err){
@@ -266,19 +264,6 @@ io.sockets.on('connection', function(socket) {
 
 
 
-// I THINK : this whole make a json file thing is only useful for API calls ...
-// and backup prep, and offline manifest prep (txt only for offline from scratch mode)
-// var jsonArtists = JSON.stringify(artists, null, 2); // additional params to write pretty json
-// fs.writeFile('public/json/artists.json', jsonArtists, function (err) {
-//   if (err) throw err;
-//   console.log('artists saved!');
-// });
-//
-// var jsonTitles = JSON.stringify(titles, null, 2);
-// fs.writeFile('public/json/titles.json', jsonTitles, function (err) {
-//   if (err) throw err;
-//   console.log('titles saved!');
-// });
 
 
 

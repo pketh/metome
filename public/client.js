@@ -200,108 +200,13 @@ $(document).ready(function () {
     $('.entry').remove();
   }
   
-  function sendFile() {
-    // siofu.listenOnInput(document.getElementById("input"));
-    // Do something when a file starts uploading:
-    // siofu.addEventListener("start", function(event){
-    $('input').change(function(entryID) {
-      var file = this.files[0]
-      var fileSize = file.size
-      var fileName = file.name
-      
-      console.log(file.name);
-      console.log(file.type);
-      console.log(file.size);
-      console.log(file);
 
-      var fileSizeLimit = 15000000 // 15mb
-      // file size gate
-      if (fileSize <= fileSizeLimit) {
-        console.log('file size is okay')
-
-        // render preview blob
-        var windowURL = window.URL || window.webkitURL
-        var blobURL = windowURL.createObjectURL(this.files[0])
-      
-        $('.file').removeClass('hidden');
-        $('.cover').removeClass('hidden');
-        $('.btn-newFile').addClass('btn-replaceFile');
-        $('.fileSizeError').addClass('hidden')
-
-        $('.cover').attr('src', blobURL ); // render preview blob
-        
-        // emit base64 code
-        var reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = function() {
-          var src = reader.result;
-          socket.emit('sendFile', src, fileName, fileSize, entryID);
-          console.log(src)
-        }
-        
-        
-        
-
-      } else {
-        console.log ('file size is too big')
-        $('.file').removeClass('hidden');
-        $('.cover').addClass('hidden');
-        var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000)
-        $('.fileSizeError span').append(fileSizeLimitConverted + 'mb');
-        $('.fileSizeError').removeClass('hidden'); // render the fileSizeError message
-      }
-
-    });
-  }
-  socket.on('sendFileSuccess', function(entryID){
-    // server tells us that file upload complete here (and path added to db)
-    console.log('sendFileSuccess for ' + entryID);
-    $('progress').removeClass('hidden').attr('value', 0);
-  });
-      
+  
   function loadEntry(entry, entryMonth, entryYear, entryID) {
-    switch (entryMonth)
-    {
-    case 0:
-      var entryMonthStr = 'Jan';
-      break;
-    case 1:
-      var entryMonthStr = 'Feb';
-      break;
-    case 2:
-      var entryMonthStr = 'Mar';
-      break;
-    case 3:
-      var entryMonthStr = 'Apr';
-      break;
-    case 4:
-      var entryMonthStr = 'May';
-      break;
-    case 5:
-      var entryMonthStr = 'Jun';
-      break;
-    case 6:
-      var entryMonthStr = 'Jul';
-      break;
-    case 7:
-      var entryMonthStr = 'Aug';
-      break;
-    case 8:
-      var entryMonthStr = 'Sep';
-      break;
-    case 9:
-      var entryMonthStr = 'Oct';
-      break;
-    case 10:
-      var entryMonthStr = 'Nov';
-      break;
-    case 11:
-      var entryMonthStr = 'Dec';
-      break;
-    default:
-      var entryMonthStr = 'err';
-      break;
+    var months = {
+      0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec'
     }
+    var entryMonthStr = months[entryMonth] // entryMonth is between 0 and 11
     $('.entry').attr('data-id', entryID);
     $('.entry .title').append(entry.title);
     $('.entry .content').append(entry.content);
@@ -309,21 +214,87 @@ $(document).ready(function () {
     $('.content').autosize();
     $('.title').focus();
     if (!(window.File && window.FileReader)) {
-      console.log("File API's not supported by this browser")
       $('.btn-newFile').addClass('hidden')
-    };
+    }
     sendFile(entryID);
-
-    
-    // siofu.addEventListener("complete", function(event){
-    //     console.log(event.success);
-    //     console.log(event.file);
-    // });
-
-
-
-  } // close loadEntry
+  }
   
+  function sendFile(entryID) {
+    $('input').change(function() {
+      var file = this.files[0]
+      var fileSize = file.size
+      var fileName = file.name
+      // file size gate
+      var fileSizeLimit = 15000000 // ~15mb
+      if (fileSize <= fileSizeLimit) {
+        // get preview blob
+        var windowURL = window.URL || window.webkitURL
+        var blobURL = windowURL.createObjectURL(this.files[0])
+        // render preview
+        $('.file').removeClass('hidden');
+        $('.cover').removeClass('hidden');
+        $('.btn-newFile').addClass('btn-replaceFile');
+        $('.fileSizeError').addClass('hidden')
+        $('.cover').attr('src', blobURL );
+        
+        console.log(file.name);
+        console.log(file.type);
+        console.log(file.size);
+        console.log(file);
+        
+        socket.emit('startSend', fileName, fileSize, entryID);
+        // read the file to server
+        var reader = new FileReader();
+        reader.onload = function(event) {
+          var data = event.target.result;
+          // console.log(data);
+          socket.emit('sendPiece', data, fileName, fileSize, entryID);
+        }
+        socket.on('morePlease', function (place, entryID, percent){
+          progressUpdate(percent);
+          var startPlace = place * 524288; // The Next Blocks Starting Position
+          // var newBlock; // The Variable that will hold the new Block of Data
+          // if(file.webkitSlice)
+          //     newBlock = file.webkitSlice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)));
+          // else
+          var newBlock = file.slice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)));
+          reader.readAsBinaryString(newBlock); // triggers reader onload
+        });
+        function progressUpdate(percent){
+          console.log('current percent is: ' + percent + '%')
+          // use normal progress as 0min to 100max for this
+          // document.getElementById('ProgressBar').style.width = percent + '%';
+          // document.getElementById('percent').innerHTML = (Math.round(percent*100)/100) + '%';
+          // do something to progress when its 100
+        }
+        socket.on('sendSuccessful', function(entryID){
+          console.log('sendSuccessful triggered. File should be in temp folder.')
+        });
+        
+        
+        
+        
+        
+        
+        
+        
+      } else {
+        // file size is too big
+        $('.file').removeClass('hidden');
+        $('.cover').addClass('hidden');
+        var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000)
+        $('.fileSizeError span').append(fileSizeLimitConverted + 'mb');
+        $('.fileSizeError').removeClass('hidden'); // render the fileSizeError message
+      }
+    })
+  }
+  
+  socket.on('sendFileSuccess', function(entryID){
+    // server tells us that file upload complete here (and path added to db)
+    console.log('sendFileSuccess for ' + entryID);
+    $('progress').removeClass('hidden').attr('value', 0);
+  });
+
 
 }); // close domready
 
