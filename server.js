@@ -11,7 +11,7 @@ var MongoClient = require('mongodb'),
   io = require('socket.io').listen(8000),
   fs = require('fs'),
   exec = require('child_process').exec,
-  util = require('util');
+  util = require('util')
   // --> auth http://www.senchalabs.org/connect/basicAuth.html
   
 // Metome Modules
@@ -20,17 +20,17 @@ var MongoClient = require('mongodb'),
 
 // Configure
 io.configure('development', function(){
-  io.set('log level', 2); // default is 3 (shows full debug)
-});
+  io.set('log level', 2) // default is 3 (shows full debug)
+})
 
 // Start server
-var app = express();
-app.set('port', process.env.PORT || 3000);
+var app = express()
+app.set('port', process.env.PORT || 3000)
 
-app.use(express.logger('dev'));
-app.use(express.static('./public'));
+app.use(express.logger('dev'))
+app.use(express.static('./public'))
   // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
-app.listen(app.get('port'));
+app.listen(app.get('port'))
   // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
 
 
@@ -39,30 +39,30 @@ app.listen(app.get('port'));
 // events
 io.sockets.on('connection', function(socket) {
   socket.on('login', function(username){
-    var user = username;
+    var user = username
 
     MongoClient.connect('mongodb://localhost/metome', function(err, db) { // make mongo address non-fixed? (hits a replicant on dev , prod on prod)
-      if (err) throw err;
-      var collection = db.collection(user);
+      if (err) throw err
+      var collection = db.collection(user)
       
       // entries successful emits on connect
       collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
-        if (err) throw err;
-        socket.emit('entriesSuccessful', titles);
-      });
+        if (err) throw err
+        socket.emit('entriesSuccessful', titles)
+      })
       
       // load individual entry
       socket.on('entry', function(entryID){
-        console.log(entryID);
+        console.log(entryID)
         collection.findOne({ _id : ObjectId ( entryID ) },function(err,entry) {
-          if (err) throw err;
+          if (err) throw err
           var entryDate = new Date( (ObjectId(entryID).getTimestamp()) )
           var entryMonth = entryDate.getMonth()
           var entryYear = entryDate.getFullYear()
           // logic for whether the entry has an image or not. nofile or hasfile
-          socket.emit('entrySuccessful', entry, entryMonth, entryYear, entryID);
-        });
-      });
+          socket.emit('entrySuccessful', entry, entryMonth, entryYear, entryID)
+        })
+      })
       
       // write title on changes
       socket.on('titleEdited', function(newTitle, entryID) {
@@ -72,13 +72,13 @@ io.sockets.on('connection', function(socket) {
            newTitle
           },
           function (err) {
-            if (err) throw err;
-            console.log(newTitle);
-            console.log(entryID);
-            socket.emit('saveSuccess', entryID);
+            if (err) throw err
+            console.log(newTitle)
+            console.log(entryID)
+            socket.emit('saveSuccess', entryID)
           }
-        );
-      });
+        )
+      })
       
       // write content on changes
       socket.on('contentEdited', function(newContent, entryID) {
@@ -89,12 +89,12 @@ io.sockets.on('connection', function(socket) {
           },
           function (err) {
             if (err) throw err;
-            console.log(newContent);
+            console.log(newContent)
             console.log(entryID)
-            socket.emit('saveSuccess', entryID);
+            socket.emit('saveSuccess', entryID)
           }
-        );
-      });
+        )
+      })
       
       // start file upload
       var files = {}
@@ -110,7 +110,7 @@ io.sockets.on('connection', function(socket) {
         var place = 0 // stores where in the file we are up to
 
         try{
-          var stat = fs.statSync(tempPath);
+          var stat = fs.statSync(tempPath)
           if(stat.isFile())
           {
             fileWriting['downloaded'] = stat.size
@@ -145,26 +145,26 @@ io.sockets.on('connection', function(socket) {
               // process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina).
                 // callback for processing complete(? - at least a console msg)
               console.log('file has been written to temp folder')
-              socket.emit('sendSuccessful', entryID);
-            });
+              socket.emit('sendSuccessful', entryID)
+            })
           }
           else if(fileWriting['data'].length > 10485760){ //If the Data Buffer reaches 10MB
             fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
               fileWriting['data'] = ""; //Reset The Buffer
-              var place = fileWriting['downloaded'] / 524288;
-              var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100;
-              socket.emit('MorePlease', place, entryID, percent); // requesting more file pieces
-            });
+              var place = fileWriting['downloaded'] / 524288
+              var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100
+              socket.emit('MorePlease', place, entryID, percent) // requesting more file pieces
+            })
           }
           else { // need more pieces please
-            var place = fileWriting['downloaded'] / 524288;
-            var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100;
-              socket.emit('morePlease', place, entryID, percent); // requesting more file pieces
+            var place = fileWriting['downloaded'] / 524288
+            var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100
+              socket.emit('morePlease', place, entryID, percent) // requesting more file pieces
           }
         
-        });
+        })
 
-      });
+      })
       
       // sendpiece/'upload' event called every time a new block of data is read
       // filereader sends pieces as it reads
@@ -182,25 +182,25 @@ io.sockets.on('connection', function(socket) {
       
       // insert new record
       socket.on('newEntry', function(err){
-        if (err) throw err;
+        if (err) throw err
         var document =  {title:'', content:''}
         collection.insert(document, function(err, entry) {
-          if (err) throw err;
+          if (err) throw err
           var entryID = entry[0]._id
-          console.log("Record added as "+ entryID);
-          socket.emit('newEntrySuccess', entryID);
-        });
-      });
+          console.log("Record added as "+ entryID)
+          socket.emit('newEntrySuccess', entryID)
+        })
+      })
       
       socket.on('removeEntry', function(entryID){
         collection.remove(
           { '_id': ObjectId ( entryID ) },
           function(err){
             if (err) throw err;
-            console.log('record deleted: ' + entryID);
-            socket.emit('removeEntrySuccess', entryID);
-          });
-      });
+            console.log('record deleted: ' + entryID)
+            socket.emit('removeEntrySuccess', entryID)
+          })
+      })
       
       socket.on('disconnect', function(){
         console.log('socket.io disconnect event fired')
@@ -213,11 +213,11 @@ io.sockets.on('connection', function(socket) {
       
       
     
-    }); // close mongo
+    }) // close mongo
   
-  }); // close user 'login' socket
+  }) // close user 'login' socket
   
-}); // closes socket.io
+}) // closes socket.io
 
 
 

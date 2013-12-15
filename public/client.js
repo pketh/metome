@@ -20,9 +20,9 @@ $(document).ready(function () {
     console.log('entries successfully retrieved');
     titles.forEach(function (titleIndex) {
       if (titleIndex.title === '') {
-        $(".entriesList").append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>');
+        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>');
       } else {
-        $(".entriesList").append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>');
+        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>');
       }
     });
   });
@@ -103,29 +103,29 @@ $(document).ready(function () {
   // settings view
   $('.settings').on('click', function(){
     console.log('settings clicked')
-  });
+  })
 
   // make new entry
   $('.newEntry').on('click', function(){
-    socket.emit('newEntry');
-  });
+    socket.emit('newEntry')
+  })
   socket.on('newEntrySuccess', function(entryID){
-    $('.entriesList').prepend('<li data-id = "' + entryID + '">Blank entry.</li>');
-    console.log('new entry created ' + entryID);
-    socket.emit('entry', entryID);
-  });
+    $('.entriesList').prepend('<li data-id = "' + entryID + '">Blank entry.</li>')
+    console.log('new entry created ' + entryID)
+    socket.emit('entry', entryID)
+  })
 
   // showing successful save
   socket.on('saveSuccess', function(entryID) {
-    console.log('Saved ' + entryID);
-    displaySaved();
-  });
+    console.log('Saved ' + entryID)
+    displaySaved()
+  })
 
   // when entry sucessfully removed
   socket.on('removeEntrySuccess', function(entryID) {
-    entryListRemove(entryID);
-    viewEntries(entryID); // --> replace with updateList(entryID)?
-  });
+    entryListRemove(entryID)
+    viewEntries(entryID) // --> replace with updateList(entryID)?
+  })
 
   // -------------------------------------------------------------------------
 
@@ -136,17 +136,17 @@ $(document).ready(function () {
     // switch into 'read only mode' = no text area editing / diff styling (greyed out a bit)
     // "disconnect" is emitted when the socket disconnected
     // http://stackoverflow.com/questions/3297923/make-textarea-readonly-with-jquery
-  });
+  })
 
   socket.on('reconnecting', function(){
     console.log("I'm reconnecting")
     // reconnecting - is emitted when the socket is attempting to reconnect with the server
-  });
+  })
   
   socket.on('reconnect_failed', function(){
     console.log("My reconnect failed")
     // reconnect failed - emitted when socket.io fails to re-establish a working
-  });
+  })
 
   socket.on('reconnect', function(){
     console.log("I reconnected")
@@ -154,7 +154,7 @@ $(document).ready(function () {
     // reconnect - emitted when socket.io successfully reconnected to the server
     // on a reconnect event switch contenteditables back to true
     // make sure the list doesn't append again to replicate on top of existing
-  });
+  })
 
   // buttons / ui (delete and addCover) visible on load
   // ui present on load
@@ -166,57 +166,59 @@ $(document).ready(function () {
   
   function entryListRemove(entryID) {
     var listItem = $('.entriesList li[data-id=' + entryID + ']')
-    listItem.remove();
-    console.log(entryID + ' removed from entries list');
+    listItem.remove()
+    console.log(entryID + ' removed from entries list')
   }
   
   function saveTitle(event, entryID) {
-    var newTitle = $('.title').val();
-    socket.emit('titleEdited', { title: newTitle }, entryID);
-    console.log('Saving... ' + 'title ' + entryID);
-    console.log(newTitle);
+    var newTitle = $('.title').val()
+    socket.emit('titleEdited', { title: newTitle }, entryID)
+    console.log('Saving... ' + 'title ' + entryID)
+    console.log(newTitle)
     var listItem = $('.entriesList li[data-id=' + entryID + ']')
-    listItem.empty().append(newTitle);
+    listItem.empty().append(newTitle)
   }
   
   function saveContent(event, entryID) {
-    var newContent = $('.content').val();
-    socket.emit('contentEdited', { content: newContent }, entryID);
-    console.log('Saving... ' + newContent + ' entryID ' + entryID);
+    var newContent = $('.content').val()
+    socket.emit('contentEdited', { content: newContent }, entryID)
+    console.log('Saving... ' + newContent + ' entryID ' + entryID)
   }
   
   function displaySaving() {
-    $('.status span').replaceWith('<span>' + 'Saving...' + '</span>');
+    $('.status .date').addClass('hidden')
+    $('.status .saving').removeClass('hidden')
+    $('.status .saved').addClass('hidden')
   }
   
   function displaySaved() {
-    $('.status span').replaceWith('<span>' + 'Saved' + '</span>');
+    $('.status .saved').removeClass('hidden')
+    $('.status .saving').addClass('hidden')
   }
   
   // back to viewing the entries list
   function viewEntries(entryID) { // triggered by browser back. or deleting an entry
-    console.log('verifying that viewEntries has ID: ' + entryID);
+    console.log('verifying that viewEntries has ID: ' + entryID)
     // DO LATER: move the view back to the entries list
-    $('.entry').remove();
+    $('.entry').remove()
   }
   
-
-  
+  // load entry tasks
   function loadEntry(entry, entryMonth, entryYear, entryID) {
     var months = {
       0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec'
     }
     var entryMonthStr = months[entryMonth] // entryMonth is between 0 and 11
-    $('.entry').attr('data-id', entryID);
-    $('.entry .title').append(entry.title);
-    $('.entry .content').append(entry.content);
-    $('.status').prepend('<span>' + entryMonthStr + ', ' + entryYear + '</span>');
-    $('.content').autosize();
-    $('.title').focus();
+    $('.entry').attr('data-id', entryID)
+    $('.entry .title').append(entry.title)
+    $('.entry .content').append(entry.content)
+    $('.status .date').text(entryMonthStr + ', ' + entryYear)
+    $('.content').autosize()
+    $('.title').focus()
     if (!(window.File && window.FileReader)) {
       $('.btn-newFile').addClass('hidden')
     }
-    sendFile(entryID);
+    sendFile(entryID)
   }
   
   function sendFile(entryID) {
@@ -236,48 +238,43 @@ $(document).ready(function () {
         $('.btn-newFile').addClass('btn-replaceFile')
         $('.fileSizeError').addClass('hidden')
         $('.cover').attr('src', blobURL )
-        
-        console.log(file.name)
-        console.log(file.type)
-        console.log(file.size)
-        console.log(file)
-        
-        socket.emit('startSend', fileName, fileSize, entryID);
+        // render status progress
+        $('.status .date').addClass('hidden')
+        $('.status .savetext').addClass('hidden')
+        $('.status .sendfile').removeClass('hidden')
+        // set progress to 0
+
+        console.log(file.name) //
+        console.log(file.type) //
+        console.log(file.size) //
+        console.log(file) //
+        socket.emit('startSend', fileName, fileSize, entryID)
         // read the file to server
         var reader = new FileReader();
         reader.onload = function(event) {
           var data = event.target.result
-          // console.log(data);
           socket.emit('sendPiece', data, fileName, fileSize, entryID)
         }
         socket.on('morePlease', function (place, entryID, percent){
           progressUpdate(percent);
-          var startPlace = place * 524288; // The Next Blocks Starting Position
-          // var newBlock; // The Variable that will hold the new Block of Data
-          // if(file.webkitSlice)
-          //     newBlock = file.webkitSlice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)));
-          // else
+          var startPlace = place * 524288; // The newBlock's Starting Position
           var newBlock = file.slice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)))
           reader.readAsBinaryString(newBlock); // triggers reader onload
         })
         function progressUpdate(percent){
           console.log('current percent is: ' + percent + '%')
-          // use normal progress as 0min to 100max for this
+          $('.sendfile .progress').val(percent).text(percent + '%')
           // document.getElementById('ProgressBar').style.width = percent + '%';
           // document.getElementById('percent').innerHTML = (Math.round(percent*100)/100) + '%';
           // do something to progress when its 100
         }
         socket.on('sendSuccessful', function(entryID){
           console.log('sendSuccessful triggered. File should be in temp folder.')
+          // hide status sendfile stuff here
+          $('.status .sendfile').addClass('hidden')
+          $('.status .savetext').removeClass('hidden')
+          $('.status .saved').removeClass('hidden')
         })
-        
-        
-        
-        
-        
-        
-        
-        
       } else {
         // file size is too big
         $('.file').removeClass('hidden')
@@ -290,13 +287,14 @@ $(document).ready(function () {
   }
   
   socket.on('sendFileSuccess', function(entryID){
-    // server tells us that file upload complete here (and path added to db)
+    // server tells us that file upload complete here (and
+    // path added to db)
     console.log('sendFileSuccess for ' + entryID)
     $('progress').removeClass('hidden').attr('value', 0)
   })
 
 
-}); // close domready
+}) // close domready
 
 
 
