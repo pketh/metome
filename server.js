@@ -28,7 +28,7 @@ var app = express();
 app.set('port', process.env.PORT || 3000);
 
 app.use(express.logger('dev'));
-app.use(express.static(__dirname + './public'));
+app.use(express.static('./public'));
   // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
 app.listen(app.get('port'));
   // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
@@ -113,43 +113,38 @@ io.sockets.on('connection', function(socket) {
           var stat = fs.statSync(tempPath);
           if(stat.isFile())
           {
-            console.log(files[fileName])
-            console.log(fileWriting)
-            console.log(fileWriting['downloaded']) // try removing '' in property definitions
-            
-            fileWriting['downloaded'] = stat.size;
+            fileWriting['downloaded'] = stat.size
             place = stat.size / 524288; // we're passing data in 1/2 mb increments
             console.log('downloaded: ' + stat.size)
-            console.log('new place: ' + place)
           }
         }
         catch(er){} // it's a new file
         fs.open(tempPath, "a", 0755, function(err, fd){
           if(err)
           {
-            console.log(err);
+            console.log(err)
           }
           else // requesting
           {
-            fileWriting['handler'] = fd; //We store the file handler so we can write to it later
-            socket.emit('morePlease', place, entryID, {percent: 0}); // requesting more file pieces
+            fileWriting['handler'] = fd //We store the file handler so we can write to it later
+            var percent = 0
+            socket.emit('morePlease', place, entryID, percent) // requesting more file pieces
           }
-        });
+        })
         
         
         socket.on('sendPiece', function(data, fileType, fileName, fileSize, entryID) {
-          console.log('sendPiece hit');
-          console.log(fileWriting); // December 14, 2013
+          console.log('sendPiece hit')
+          console.log(fileWriting) // December 14, 2013
           
           //
-          fileWriting['downloaded'] += data.length;
-          fileWriting['data'] += data;
+          fileWriting['downloaded'] += data.length
+          fileWriting['data'] += data
           if(fileWriting['downloaded'] == fileWriting['fileSize']) { //If File is Fully Uploaded
             fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
               // process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina).
                 // callback for processing complete(? - at least a console msg)
-              console.log(Writen);
-              console.log('file has been written to temp folder');
+              console.log('file has been written to temp folder')
               socket.emit('sendSuccessful', entryID);
             });
           }
@@ -180,7 +175,7 @@ io.sockets.on('connection', function(socket) {
 
 
 
-      // var filePath = __dirname + '/public/uploads/' + user + '/' + name
+      // var filePath = './public/uploads/' + user + '/' + name
 
 
       

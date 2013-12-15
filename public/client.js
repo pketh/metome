@@ -231,24 +231,24 @@ $(document).ready(function () {
         var windowURL = window.URL || window.webkitURL
         var blobURL = windowURL.createObjectURL(this.files[0])
         // render preview
-        $('.file').removeClass('hidden');
-        $('.cover').removeClass('hidden');
-        $('.btn-newFile').addClass('btn-replaceFile');
+        $('.file').removeClass('hidden')
+        $('.cover').removeClass('hidden')
+        $('.btn-newFile').addClass('btn-replaceFile')
         $('.fileSizeError').addClass('hidden')
-        $('.cover').attr('src', blobURL );
+        $('.cover').attr('src', blobURL )
         
-        console.log(file.name);
-        console.log(file.type);
-        console.log(file.size);
-        console.log(file);
+        console.log(file.name)
+        console.log(file.type)
+        console.log(file.size)
+        console.log(file)
         
         socket.emit('startSend', fileName, fileSize, entryID);
         // read the file to server
         var reader = new FileReader();
         reader.onload = function(event) {
-          var data = event.target.result;
+          var data = event.target.result
           // console.log(data);
-          socket.emit('sendPiece', data, fileName, fileSize, entryID);
+          socket.emit('sendPiece', data, fileName, fileSize, entryID)
         }
         socket.on('morePlease', function (place, entryID, percent){
           progressUpdate(percent);
@@ -257,9 +257,9 @@ $(document).ready(function () {
           // if(file.webkitSlice)
           //     newBlock = file.webkitSlice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)));
           // else
-          var newBlock = file.slice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)));
+          var newBlock = file.slice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)))
           reader.readAsBinaryString(newBlock); // triggers reader onload
-        });
+        })
         function progressUpdate(percent){
           console.log('current percent is: ' + percent + '%')
           // use normal progress as 0min to 100max for this
@@ -269,7 +269,7 @@ $(document).ready(function () {
         }
         socket.on('sendSuccessful', function(entryID){
           console.log('sendSuccessful triggered. File should be in temp folder.')
-        });
+        })
         
         
         
@@ -280,20 +280,20 @@ $(document).ready(function () {
         
       } else {
         // file size is too big
-        $('.file').removeClass('hidden');
-        $('.cover').addClass('hidden');
+        $('.file').removeClass('hidden')
+        $('.cover').addClass('hidden')
         var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000)
-        $('.fileSizeError span').append(fileSizeLimitConverted + 'mb');
-        $('.fileSizeError').removeClass('hidden'); // render the fileSizeError message
+        $('.fileSizeError span').append(fileSizeLimitConverted + 'mb')
+        $('.fileSizeError').removeClass('hidden') // render the fileSizeError message
       }
     })
   }
   
   socket.on('sendFileSuccess', function(entryID){
     // server tells us that file upload complete here (and path added to db)
-    console.log('sendFileSuccess for ' + entryID);
-    $('progress').removeClass('hidden').attr('value', 0);
-  });
+    console.log('sendFileSuccess for ' + entryID)
+    $('progress').removeClass('hidden').attr('value', 0)
+  })
 
 
 }); // close domready
