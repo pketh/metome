@@ -79,7 +79,7 @@ io.sockets.on('connection', function(socket) {
           }
         )
       })
-      
+
       // write content on changes
       socket.on('contentEdited', function(newContent, entryID) {
         collection.update(
@@ -95,91 +95,74 @@ io.sockets.on('connection', function(socket) {
           }
         )
       })
-      
+
+
+// ----------------------------------------------------------
+
+
       // start file upload
-      var files = {}
       socket.on('startSend', function(fileName, fileSize, entryID) {
-        console.log('startSend hit')
-        files[fileName] = { // create new entry in files {}
+        var chunkSize = 262144 // ~.256kb
+        console.log('\n \n$ startSend hit for ' + fileName)
+        var fileWriting = { // create new entry in files {}
+          fileName : fileName,
           fileSize : fileSize,
           data : '',
-          downloaded : 0
+          downloaded : 0,
+          place : 0,
+          percent : 0
         }
-        var fileWriting = files[fileName]
+        var place = fileWriting.place
+        var percent = fileWriting.percent
         var tempPath = 'temp/' +  entryID + '-' + fileName
-        var place = 0 // stores where in the file we are up to
 
-        try{
-          var stat = fs.statSync(tempPath)
-          if(stat.isFile())
-          {
-            fileWriting['downloaded'] = stat.size
-            place = stat.size / 524288; // we're passing data in 1/2 mb increments
-            console.log('downloaded: ' + stat.size)
-          }
-        }
-        catch(er){} // it's a new file
         fs.open(tempPath, "a", 0755, function(err, fd){
-          if(err)
-          {
-            console.log(err)
-          }
-          else // requesting
-          {
-            fileWriting['handler'] = fd //We store the file handler so we can write to it later
-            var percent = 0
-            socket.emit('morePlease', place, entryID, percent) // requesting more file pieces
-          }
+          if (err) throw err
+          console.log('NEW FILE: ' + fileName + ' ' + percent + '% at place ' + place)
+          fileWriting['handler'] = fd // store the file handler to fs.write to later
+          socket.emit('moreChunks', place, entryID, percent, fileName)
+          console.log('+1 NEW FILE moreChunks: ' + fileName + ' chunks needed at place ' + place + ' and percent ' + percent) // ISSUE
         })
-        
-        
-        socket.on('sendPiece', function(data, fileType, fileName, fileSize, entryID) {
-          console.log('sendPiece hit')
-          console.log(fileWriting) // December 14, 2013
-          
-          //
+
+        // processing the file pieces from client
+        socket.on('sendChunk', function(data, fileName, fileSize, entryID) {
+          console.log('- sendChunk hit for ' + fileName) // ISSUE asks for previous/complete and new here
           fileWriting['downloaded'] += data.length
           fileWriting['data'] += data
-          if(fileWriting['downloaded'] == fileWriting['fileSize']) { //If File is Fully Uploaded
-            fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
-              // process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina).
-                // callback for processing complete(? - at least a console msg)
-              console.log('file has been written to temp folder')
+
+
+          if (fileWriting['downloaded'] == fileWriting['fileSize']) { // file is fully uploaded (downloaded = filesize)
+            fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){ // write buffer to the file
+              console.log('SUCCESS: ' + fileName)
+              // later: process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina). filePath = './public/uploads/' + user + '/' + name
               socket.emit('sendSuccessful', entryID)
             })
           }
-          else if(fileWriting['data'].length > 10485760){ //If the Data Buffer reaches 10MB
+
+          else if (fileWriting['data'].length > 10485760){ //If the Data Buffer reaches 10MB
             fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
               fileWriting['data'] = ""; //Reset The Buffer
-              var place = fileWriting['downloaded'] / 524288
+              var place = fileWriting['downloaded'] / chunkSize
               var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100
-              socket.emit('MorePlease', place, entryID, percent) // requesting more file pieces
+              socket.emit('moreChunks', place, entryID, percent, fileName)
             })
           }
-          else { // need more pieces please
-            var place = fileWriting['downloaded'] / 524288
+
+          else { // need more chunks please // 2nd file hits need chunks even if it's less than 256kb
+            var place = fileWriting['downloaded'] / chunkSize
+            console.log('+ moreChunks: ' + fileName + ' chunks needed at place ' + place + ' and percent ' + percent) // ISSUE asks for previous/complete and new here
             var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100
-              socket.emit('morePlease', place, entryID, percent) // requesting more file pieces
+              socket.emit('moreChunks', place, entryID, percent, fileName) // requesting more file pieces
           }
-        
         })
-
-      })
-      
-      // sendpiece/'upload' event called every time a new block of data is read
-      // filereader sends pieces as it reads
+      }) // close startSend
 
 
-// !!!!!!!! implement morePlease ('moreData') on client . December 14, 2013
+// ----------------------------------------------------------
 
 
 
 
-      // var filePath = './public/uploads/' + user + '/' + name
-
-
-      
-      
       // insert new record
       socket.on('newEntry', function(err){
         if (err) throw err

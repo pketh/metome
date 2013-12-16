@@ -220,7 +220,10 @@ $(document).ready(function () {
     }
     sendFile(entryID)
   }
-  
+
+
+// --------------------------------------------------------------
+
   function sendFile(entryID) {
     $('input').change(function() {
       var file = this.files[0]
@@ -229,69 +232,78 @@ $(document).ready(function () {
       // file size gate
       var fileSizeLimit = 15000000 // ~15mb
       if (fileSize <= fileSizeLimit) {
-        // get preview blob
         var windowURL = window.URL || window.webkitURL
         var blobURL = windowURL.createObjectURL(this.files[0])
-        // render preview
-        $('.file').removeClass('hidden')
-        $('.cover').removeClass('hidden')
-        $('.btn-newFile').addClass('btn-replaceFile')
-        $('.fileSizeError').addClass('hidden')
-        $('.cover').attr('src', blobURL )
-        // render status progress
-        $('.status .date').addClass('hidden')
-        $('.status .savetext').addClass('hidden')
-        $('.status .sendfile').removeClass('hidden')
-        // set progress to 0
+        renderPreview()
 
-        console.log(file.name) //
-        console.log(file.type) //
-        console.log(file.size) //
-        console.log(file) //
+        console.log('\n\nfirst console msg for : ' + file.name)
+        console.log(file.size)
+        
+        // initiate the upload
         socket.emit('startSend', fileName, fileSize, entryID)
+        console.log('startSend emitted now for ' + fileName) // sends right singular filename
+
+        // todo : abort all inprogress uploads (client)
+        
         // read the file to server
-        var reader = new FileReader();
-        reader.onload = function(event) {
-          var data = event.target.result
-          socket.emit('sendPiece', data, fileName, fileSize, entryID)
-        }
-        socket.on('morePlease', function (place, entryID, percent){
-          progressUpdate(percent);
-          var startPlace = place * 524288; // The newBlock's Starting Position
-          var newBlock = file.slice(startPlace, startPlace + Math.min(524288, (fileSize-startPlace)))
-          reader.readAsBinaryString(newBlock); // triggers reader onload
+        var reader = new FileReader()
+
+        socket.on('moreChunks', function (place, entryID, percent, fileName){
+          progressUpdate(percent)
+          console.log('%P ' + fileName + ' current percent is: ' + percent + '% at place: ' + place)
+          var chunkSize = 262144
+          var startPlace = place * chunkSize
+          var newChunk = file.slice(startPlace, startPlace + Math.min(chunkSize, (fileSize-startPlace)))
+          reader.readAsBinaryString(newChunk) // triggers reader onload
+          reader.onload = function(event) {
+            var data = event.target.result
+            console.log('RO: reader onload for ' + fileName)
+            socket.emit('sendChunk', data, fileName, fileSize, entryID)
+          }
+
         })
-        function progressUpdate(percent){
-          console.log('current percent is: ' + percent + '%')
-          $('.sendfile .progress').val(percent).text(percent + '%')
-          // document.getElementById('ProgressBar').style.width = percent + '%';
-          // document.getElementById('percent').innerHTML = (Math.round(percent*100)/100) + '%';
-          // do something to progress when its 100
-        }
+
+// --------------------------------------------------------------
+
         socket.on('sendSuccessful', function(entryID){
-          console.log('sendSuccessful triggered. File should be in temp folder.')
-          // hide status sendfile stuff here
+          console.log('sendSuccessful triggered for ' + entryID + '. File should be in temp folder.')
           $('.status .sendfile').addClass('hidden')
           $('.status .savetext').removeClass('hidden')
           $('.status .saved').removeClass('hidden')
+          $('.sendfile .progress').val(0).text('0%')
+          // the problem is here , i  need to better reset things on complete
+          // so what's being inited on start :
         })
-      } else {
-        // file size is too big
+        
+        function progressUpdate(percent){
+          $('.sendfile .progress').val(percent).text(percent + '%')
+        }
+        
+        function renderPreview () {
+          $('.status .date').addClass('hidden')
+          $('.status .savetext').addClass('hidden')
+          $('.status .sendfile').removeClass('hidden')
+          $('.file').removeClass('hidden')
+          $('.cover').removeClass('hidden')
+          $('.btn-newFile').addClass('btn-replaceFile')
+          $('.fileSizeError').addClass('hidden')
+          $('.cover').attr('src', blobURL )
+        }
+
+
+      } else { // file size is too big
         $('.file').removeClass('hidden')
         $('.cover').addClass('hidden')
         var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000)
         $('.fileSizeError span').append(fileSizeLimitConverted + 'mb')
         $('.fileSizeError').removeClass('hidden') // render the fileSizeError message
       }
-    })
-  }
+
+    }) // close input onchange event
+
+  } // close sendFile
   
-  socket.on('sendFileSuccess', function(entryID){
-    // server tells us that file upload complete here (and
-    // path added to db)
-    console.log('sendFileSuccess for ' + entryID)
-    $('progress').removeClass('hidden').attr('value', 0)
-  })
+// =================================================================
 
 
 }) // close domready
