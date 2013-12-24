@@ -161,7 +161,7 @@ $(document).ready(function () {
   // trying start fades out ui (save btn , img btn)
   // move mouse triggers it back in
 
-  // -------------upload-------------------------------------------------------------
+  // -------------upload-tasks------------------------------------------------------------
 
 
   function entryListRemove(entryID) {
@@ -228,10 +228,11 @@ $(document).ready(function () {
       var fileName = file.name
       var fileSizeLimit = 15000000
       if (fileSize <= fileSizeLimit) {
-        renderPreview()
+        renderPreview(file)
+        console.log(fileSize)
         socket.emit('startSend', fileName, fileSize, entryID) // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       } else {
-      	renderTooBig()
+        renderTooBig()
       }
       socket.on('moreChunks', function (writing) {
         progressUpdate(writing.percent)

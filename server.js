@@ -54,9 +54,9 @@ io.sockets.on('connection', function(socket) {
       // load individual entry
       socket.on('entry', function(entryID){
         console.log(entryID)
-        collection.findOne({ _id : ObjectId ( entryID ) }, function(err,entry) {
+        collection.findOne({ '_id' : new ObjectId ( entryID ) }, function(err,entry) {
           if (err) throw err
-          var entryDate = new Date( (ObjectId(entryID).getTimestamp()) )
+          var entryDate = new Date( (new ObjectId(entryID).getTimestamp()) )
           var entryMonth = entryDate.getMonth()
           var entryYear = entryDate.getFullYear()
           // logic for whether the entry has an image or not. nofile or hasfile
@@ -67,7 +67,7 @@ io.sockets.on('connection', function(socket) {
       // write title on changes
       socket.on('titleEdited', function(newTitle, entryID) {
         collection.update(
-          { '_id' : ObjectId ( entryID ) },
+          { '_id' : new ObjectId ( entryID ) },
           { $set:
            newTitle
           },
@@ -83,7 +83,7 @@ io.sockets.on('connection', function(socket) {
       // write content on changes
       socket.on('contentEdited', function(newContent, entryID) {
         collection.update(
-          { '_id' : ObjectId ( entryID ) },
+          { '_id' : new ObjectId ( entryID ) },
           { $set:
            newContent
           },
@@ -113,10 +113,10 @@ io.sockets.on('connection', function(socket) {
           percent: 0,
           tempPath: 'temp/' +  entryID + '-' + fileName,
         }
-
         fs.open(writing.tempPath, 'a', 0755, function(err, fd){
           if (err) throw err
           writing.handler = fd
+          console.log('filesize: ' + writing.fileSize)
           socket.emit('moreChunks', writing)
           console.log('+1 NEW FILE/more chunks: ' + writing.fileName + ' ' + writing.percent + '% at place ' + writing.place)
         })
@@ -124,39 +124,45 @@ io.sockets.on('connection', function(socket) {
 
       // processing the chunks from client
       socket.on('sendChunk', function(data, writing) {
-        console.log('- sendChunk hit for ' + writing.fileName)
+        console.log('- sendChunk hit for ' + writing.fileName + ', ' + writing.fileSize)
+        console.log('downloaded before ' +  writing.downloaded + ' + ' + data.length)
         writing.downloaded += data.length
-        writing.data += data // CHEcK - data var brought in from client morechunks , should be added ontop of writing.data
+        writing.data += data
+        console.log('downloaded after ' +  writing.downloaded)
+        // if upload complete
         if (writing.downloaded === writing.fileSize) {
-        	console.log('writing to ' + writing.handler)
+          console.log('writing to ' + writing.handler) // handler keeps upping iteslf
           fs.write(writing.handler, writing.data, null, 'Binary', function(err, written){ // write buffer to the file
             console.log('SUCCESS: ' + writing.fileName + written)
             // later: process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina). filePath = './public/uploads/' + user + '/' + name
             // insert path records
             socket.emit('sendSuccessful', writing.entryID)
+            writing = null // zeroing out completed
           })
         }
-        else if (writing.data.length > 10485760) { //If the Data Buffer reaches 10MB
+        // if buffer full
+        else if (writing.data.length > 10485760) {
           console.console.log('^ drain buffer');
           fs.write(writing.handler, writing.data, null, 'Binary', function(err, Writen){
-            writing.data = "";
-            var place = writing['downloaded'] / chunkSize
-            var percent = (writing['downloaded'] / writing['fileSize']) * 100
+            writing.data = '';
+            writing.place = writing.downloaded / chunkSize
+            writing.percent = (writing.downloaded / writing.fileSize) * 100
             socket.emit('moreChunks', writing)
           })
         }
+        // if incomplete
         else {
-          var place = writing.downloaded / chunkSize
-          var percent = (writing.downloaded / writing.fileSize) * 100
-          console.log('+ moreChunks: ' + writing.fileName + ' place ' + place + ' and percent ' + percent)
+          console.log('INCOMPLETE:')
+          console.log('place = ' + writing.downloaded + ' / chunksize : ' + chunkSize)
+          console.log('percent = ' + writing.downloaded + ' / ' + writing.fileSize)
+          writing.place = writing.downloaded / chunkSize // ISSUE being calculated wrong on 2nd pass
+          writing.percent = (writing.downloaded / writing.fileSize) * 100 // **** ISSUE being calculated wrong always
           socket.emit('moreChunks', writing)
         }
       })
 
 
 // ----------------------------------------------------------
-
-
 
 
       // insert new record
@@ -166,14 +172,14 @@ io.sockets.on('connection', function(socket) {
         collection.insert(document, function(err, entry) {
           if (err) throw err
           var entryID = entry[0]._id
-          console.log("Record added as "+ entryID)
+          console.log('Record added as ' + entryID)
           socket.emit('newEntrySuccess', entryID)
         })
       })
 
       socket.on('removeEntry', function(entryID){
         collection.remove(
-          { '_id': ObjectId ( entryID ) },
+          { '_id': new ObjectId ( entryID ) },
           function(err){
             if (err) throw err;
             console.log('record deleted: ' + entryID)
