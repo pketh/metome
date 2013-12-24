@@ -6,34 +6,33 @@
 
 $(document).ready(function () {
 
-  var socket = io.connect('http://localhost:8000');
-  // var siofu = new SocketIOFileUpload(socket);
+  var socket = io.connect('http://localhost:8000')
   var user = 'pirijan'; // TODO - auth
 
   socket.on('connect', function () {
-    socket.emit('login', user );
+    socket.emit('login', user )
     //
-  });
+  })
 
   // list entries (triggered by connection)
   socket.on('entriesSuccessful', function(titles){
-    console.log('entries successfully retrieved');
+    console.log('entries successfully retrieved')
     titles.forEach(function (titleIndex) {
       if (titleIndex.title === '') {
-        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>');
+        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>')
       } else {
-        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>');
+        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>')
       }
-    });
-  });
+    })
+  })
 
   // request an entry
   $('.entriesList').on('click', 'li', function(){
-    var entryID = $(this).data('id');
-    socket.emit('entry', entryID);
-    // clearEntry();
-    // $('entryContainer').empty();
-  });
+    var entryID = $(this).data('id')
+    socket.emit('entry', entryID)
+    // clearEntry()
+    // $('entryContainer').empty()
+  })
 
   // load the entry based into .entry
   socket.on('entrySuccessful', function(entry, entryMonth, entryYear, entryID){
@@ -41,64 +40,64 @@ $(document).ready(function () {
     // load entryTemplate into entrycontainer
     $('.entryContainer').load('templates/entry.html', function() {
 
-      loadEntry(entry, entryMonth, entryYear, entryID);
+      loadEntry(entry, entryMonth, entryYear, entryID)
 
       // title saving
       $('.title').typing({
         start: function() {
-          displaySaving();
+          displaySaving()
         },
         stop: function(event) {
-          saveTitle(event, entryID);
+          saveTitle(event, entryID)
         },
         delay: 400
-      });
+      })
 
       // title: enter acts like tab
       $('.title').on('keypress', function(event) {
         if(event.which === 13) {
-          event.preventDefault();
-          $('.content').focus();
+          event.preventDefault()
+          $('.content').focus()
         }
-      });
+      })
 
       // content: saving
       $('.content').typing({
         start: function() {
-          displaySaving();
+          displaySaving()
         },
         stop: function(event) {
-          saveContent(event, entryID);
+          saveContent(event, entryID)
         },
         delay: 400
-      });
+      })
 
       // delete button view logic
       $('.delete').on('click', function() {
-        $('.delete').addClass('hidden');
-        $('.destroyCancel').removeClass('hidden');
-      });
+        $('.delete').addClass('hidden')
+        $('.destroyCancel').removeClass('hidden')
+      })
 
       // cancel button view logic
       $('.cancel').on('click', function() {
-        $('.delete').removeClass('hidden');
-        $('.destroyCancel').addClass('hidden');
-      });
+        $('.delete').removeClass('hidden')
+        $('.destroyCancel').addClass('hidden')
+      })
 
       // destroy/remove entry
       $('.destroy').on('click', function(){
-        var entryID= $('.entry').attr('data-id');
+        var entryID= $('.entry').attr('data-id')
         console.log('delete triggered for ' + entryID)
-        socket.emit('removeEntry', entryID);
-      });
+        socket.emit('removeEntry', entryID)
+      })
 
       // trigger input on btn click
       $('.btn-newFile').on('click', function () {
         $('input').click()
       })
 
-    });
-  }); // close entry
+    })
+  }) // close entry
 
   // settings view
   $('.settings').on('click', function(){
@@ -232,7 +231,7 @@ $(document).ready(function () {
         console.log(fileSize)
         socket.emit('startSend', fileName, fileSize, entryID) // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       } else {
-        renderTooBig()
+        renderTooBig(fileSizeLimit)
       }
       socket.on('moreChunks', function (writing) {
         progressUpdate(writing.percent)
@@ -275,7 +274,7 @@ $(document).ready(function () {
     $('.cover').attr('src', blobURL )
   }
 
-  function renderTooBig() {
+  function renderTooBig(fileSizeLimit) {
     $('.file').removeClass('hidden')
     $('.cover').addClass('hidden')
     var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000)
