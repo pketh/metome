@@ -220,37 +220,61 @@ $(document).ready(function () {
     sendFile(entryID)
   }
 
+// --------------------------------------------------------------------------------------------------------
+
+
+  var reader = new FileReader()
+  var chunkSize = 524288
+  var file
+  var fileName
+
   function sendFile(entryID) {
     $('input').change(function() {
-      var file = this.files[0]
+      file = this.files[0]
+      fileName = file.name
       var fileSize = file.size
-      var fileName = file.name
       var fileSizeLimit = 15000000
+
       if (fileSize <= fileSizeLimit) {
         renderPreview(file)
-        console.log(fileSize)
-        socket.emit('startSend', fileName, fileSize, entryID) // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        emitFile(fileSize, entryID)
+
       } else {
         renderTooBig(fileSizeLimit)
       }
-      socket.on('moreChunks', function (writing) {
-        progressUpdate(writing.percent)
-        console.log('%P ' + writing.fileName + ' percent is: ' + writing.percent + '%. at place: ' + writing.place) // initial log is gonna be 0% , 0
-        var chunkSize = 262144
-        var startPlace = writing.place * chunkSize
-        var newChunk = file.slice(startPlace, startPlace + Math.min(chunkSize, (writing.fileSize-startPlace)))
-        var reader = new FileReader()
-        reader.readAsBinaryString(newChunk)
-        reader.onload = function(event) {
-          var data = event.target.result
-          socket.emit('sendChunk', data, writing) // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        }
-      })
+
     })
   }
 
-  socket.on('sendSuccessful', function(entryID) {
-    console.log('sendSuccessful triggered for ' + entryID + '. File should be in temp folder.')
+  socket.on('moreData', function (place, percent) {
+    console.log('MOREDATA')
+    progressUpdate(percent)
+    var startPlace = place * chunkSize
+    var newChunk
+    newChunk = file.slice(startPlace, startPlace + Math.min(chunkSize, (file.fileSize-startPlace)))
+    reader.readAsBinaryString(newChunk)
+  })
+
+
+
+
+// --------------------------------------------------------------------------------------------------------
+
+
+
+  function emitFile(fileSize, entryID) {
+    reader.onload = function(event) {
+      var data = event.target.result
+      socket.emit('upload', fileName, data)
+      console.log('UPLOAD')
+    }
+    socket.emit('startUpload', fileName, fileSize, entryID)
+    console.log('START')
+  }
+
+
+  socket.on('sendSuccessful', function(writing) {
+    console.log('sendSuccessful triggered for ' + writing.entryID + '. File should be in temp folder.')
     $('.status .sendfile').addClass('hidden')
     $('.status .savetext').removeClass('hidden')
     $('.status .saved').removeClass('hidden')

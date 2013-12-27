@@ -101,63 +101,69 @@ io.sockets.on('connection', function(socket) {
 
 
       // start file upload
-      var chunkSize = 262144
-      socket.on('startSend', function(fileName, fileSize, entryID) {
-        console.log('\n \n$ STARTSend hit for ' + fileName)
-        var writing = {
+      var chunkSize = 524288
+      var files = {}
+      var tempPath
+      socket.on('startUpload', function(fileName, fileSize, entryID) {
+        console.log('STARTED')
+        files.fileName = {
           fileName: fileName,
           fileSize: fileSize,
           data: '',
-          downloaded: 0,
-          place: 0,
-          percent: 0,
-          tempPath: 'temp/' +  entryID + '-' + fileName,
+          downloaded: 0
         }
-        fs.open(writing.tempPath, 'a', 0755, function(err, fd){
-          if (err) throw err
-          writing.handler = fd
-          console.log('filesize: ' + writing.fileSize)
-          socket.emit('moreChunks', writing)
-          console.log('+1 NEW FILE/more chunks: ' + writing.fileName + ' ' + writing.percent + '% at place ' + writing.place)
-        })
+        var place = 0
+        tempPath = 'temp/' +  entryID + '-' + fileName
+
+        try {
+          console.log('TRY')
+          var stat = fs.statSync(tempPath)
+          if (stat.isFile()) {
+            files.fileName.downloaded = stat.size
+            place = stat.size / chunkSize
+          }
+        }
+        catch(err) {
+          console.log('CATCH')
+          fs.open(tempPath, 'a', 0755, function(err, fd){
+            if (err) throw err
+            var percent = 0
+            files.fileName.handler = fd
+            socket.emit('moreData', place, percent)
+          })
+        }
+
       })
 
-      // processing the chunks from client
-      socket.on('sendChunk', function(data, writing) {
-        console.log('- sendChunk hit for ' + writing.fileName + ', ' + writing.fileSize)
-        console.log('downloaded before ' +  writing.downloaded + ' + ' + data.length)
-        writing.downloaded += data.length
-        writing.data += data
-        console.log('downloaded after ' +  writing.downloaded)
-        // if upload complete
-        if (writing.downloaded === writing.fileSize) {
-          console.log('writing to ' + writing.handler) // handler keeps upping iteslf
-          fs.write(writing.handler, writing.data, null, 'Binary', function(err, written){ // write buffer to the file
-            console.log('SUCCESS: ' + writing.fileName + written)
-            // later: process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina). filePath = './public/uploads/' + user + '/' + name
-            // insert path records
-            socket.emit('sendSuccessful', writing.entryID)
-            writing = null // zeroing out completed
+      // processing chunks from client
+      socket.on('upload', function(fileName, data) {
+        console.log('ON UPLOAD')
+        files.fileName.downloaded += data.length
+        files.fileName.data += data
+
+        if (files.fileName.downloaded === files.fileName.fileSize) { // upload complete
+          console.log('COMPLETE')
+          fs.write(files.fileName.handler, files.fileName.data, null, 'Binary', function(err){ // processImages() later: process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina). filePath = './public/uploads/' + user + '/' + name, insert db path records
+            if (err) throw err
+            socket.emit('sendSuccessful', files.fileName)
           })
         }
-        // if buffer full
-        else if (writing.data.length > 10485760) {
-          console.console.log('^ drain buffer');
-          fs.write(writing.handler, writing.data, null, 'Binary', function(err, Writen){
-            writing.data = '';
-            writing.place = writing.downloaded / chunkSize
-            writing.percent = (writing.downloaded / writing.fileSize) * 100
-            socket.emit('moreChunks', writing)
+
+        else if (files.fileName.data.length > 10485760) { // buffer full
+          console.log('^ drain buffer');
+          fs.write(files.fileName.handler, files.fileName.data, null, 'Binary', function(err){
+            if (err) throw err
+            files.fileName.data = '';
+            var place = files.fileName.downloaded / chunkSize
+            var percent = (files.fileName.downloaded / files.fileName.fileSize) * 100
+            socket.emit('moreData', files.fileName)
           })
         }
-        // if incomplete
-        else {
-          console.log('INCOMPLETE:')
-          console.log('place = ' + writing.downloaded + ' / chunksize : ' + chunkSize)
-          console.log('percent = ' + writing.downloaded + ' / ' + writing.fileSize)
-          writing.place = writing.downloaded / chunkSize // ISSUE being calculated wrong on 2nd pass
-          writing.percent = (writing.downloaded / writing.fileSize) * 100 // **** ISSUE being calculated wrong always
-          socket.emit('moreChunks', writing)
+        else { // incomplete
+          console.log('INCOMPLETE')
+          var place = files.fileName.downloaded / chunkSize // ISSUE being calculated wrong on 2nd pass
+          var percent = (files.fileName.downloaded / files.fileName.fileSize) * 100 // **** ISSUE being calculated wrong always
+          socket.emit('moreData', place, percent)
         }
       })
 
@@ -190,12 +196,11 @@ io.sockets.on('connection', function(socket) {
       socket.on('disconnect', function(){
         console.log('socket.io disconnect event fired')
         //
-        // log the disconnect to a global json.. (reasons?, also needs to include user, entryID, time)
+        // log the disconnect to a global json.. (reasons? flushing scheme/reap?, also needs to include user, entryID, time)
         // socket.emit disconnect client code = ur in offline mode / read only
         // fired in all cases when client closed.
         // for reconnect, you have to use the 'connection' event
       })
-
 
 
     }) // close mongo
