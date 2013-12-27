@@ -34,13 +34,14 @@
 
     <!-- file -->
     <div class="fileContainer">
-        <form method="post" action="/">
+        <form method="post" action="/" enctype="multipart/form-data">
+        <!-- add name to input = entryID -->
           <input class="input hidden" id="input" type="file" accept="image/gif, image/jpeg, image/png">
         </form>
         <div class="file hidden">
           <img class="cover" src="">
           <div class="fileSizeError">
-            <p>Eeep! Your image is larger than <span></span></p>
+            <p>Eeep! Your image is larger than 15mb</p>
             <p>Please try again with something smaller.</p>
           </div>
         </div>

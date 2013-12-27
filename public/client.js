@@ -233,34 +233,32 @@ $(document).ready(function () {
 
       if (fileSize <= fileSizeLimit) {
         renderPreview(file)
-
         var formData = new FormData()
-        formData.append(fileName, file)
+        formData.append(entryID, file)
         var xhr = new XMLHttpRequest()
-        xhr.open('post', '/', true)
+        xhr.open('post', '/', true, user)
         xhr.upload.onprogress = function(event) { // put in progress
           var percent = (event.loaded / event.total) * 100
           progressUpdate(percent)
         }
-
-        xhr.onerror = function(e) {
+        xhr.onerror = function() {
           console.log('xhr error')
         }
-
         xhr.onload = function() {
-          console.log(this.statusText);
+          sendSuccessful()
         }
-
         xhr.send(formData);
 
       } else {
-        renderTooBig(fileSizeLimit)
+        renderTooBig()
       }
 
     })
   }
 
-
+  socket.on('uploadSuccess', function(filename) {
+    console.log(filename + ' saved!')
+  })
 
 
 
@@ -269,14 +267,12 @@ $(document).ready(function () {
 
 
 
-//
-  socket.on('sendSuccessful', function(writing) {
-    console.log('sendSuccessful triggered for ' + writing.entryID + '. File should be in temp folder.')
+  function sendSuccessful() {
     $('.status .sendfile').addClass('hidden')
     $('.status .savetext').removeClass('hidden')
     $('.status .saved').removeClass('hidden')
     $('.sendfile .progress').val(0).text('0%')
-  })
+  }
 
   function progressUpdate(percent) {
     $('.sendfile .progress').val(percent).text(percent + '%')
@@ -295,11 +291,9 @@ $(document).ready(function () {
     $('.cover').attr('src', blobURL )
   }
 
-  function renderTooBig(fileSizeLimit) {
+  function renderTooBig() {
     $('.file').removeClass('hidden')
     $('.cover').addClass('hidden')
-    var fileSizeLimitConverted = Math.round(fileSizeLimit / 1000000)
-    $('.fileSizeError span').append(fileSizeLimitConverted + 'mb')
     $('.fileSizeError').removeClass('hidden') // render the fileSizeError message
   }
 

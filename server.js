@@ -3,42 +3,47 @@
 // ┬──┬ ◡ﾉ(° -°ﾉ)
 
 
-// Node Modules
+// npm
 var MongoClient = require('mongodb'),
   ObjectId = require('mongodb').ObjectID,
   express = require('express'),
+  app = express(),
   http = require('http'),
   io = require('socket.io').listen(8000),
   fs = require('fs'),
   exec = require('child_process').exec,
-  util = require('util')
+  util = require('util').inspect,
+  busBoy = require('busboy')
   // --> auth http://www.senchalabs.org/connect/basicAuth.html
 
-// Metome Modules
-// var settings
-// require('./metome_modules/settings.js')
+// metome modules
+  // require('./metome_modules/settings.js')
 
-// Configure
+// configure
 io.configure('development', function(){
   io.set('log level', 2) // default is 3 (shows full debug)
 })
 
-// Start server
-var app = express()
+// start server
 app.set('port', process.env.PORT || 3000)
 app.use(express.logger('dev'))
 app.use(express.static('./public'))
-  // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
-app.use(express.bodyParser({
-  keepExtensions: true,
-  uploadDir: './temp',
-  limit: '15mb'
-}))
-app.use(express.methodOverride())
+
+// app.use(express.bodyParser({ // =============================================================
+//   keepExtensions: true,
+//   uploadDir: './temp',
+//   limit: '15mb'
+// }))
+
 app.listen(app.get('port'))
-  // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
+
+// routes
 
 
+
+
+// https://npmjs.org/package/api
+// .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
 
 
 // events
@@ -101,13 +106,65 @@ io.sockets.on('connection', function(socket) {
         )
       })
 
+// ======================================================================
 
       app.post('/', function(req, res) {
-        console.log('upload success!')
-        console.log(req.files);
-        res.end();
-      });
+        console.log('upload going')
+        var infiles = 0,
+          outfiles = 0,
+          done = false,
+          busboy = new busBoy({
+            headers: req.headers,
+            limits: {
+              fileSize: 15000000,
+              files: 1
+            }
+          })
+        console.log('Start parsing form ...')
+        busboy.on('file', function(entryID, file, filename, encoding, mimetype) {
+          ++infiles
+          onFile(entryID, file, filename, function() {
+            ++outfiles
+            if (done)
+              console.log(outfiles + '/' + infiles + ' parts written to disk')
+            if (done && infiles === outfiles) {
+              // ACTUAL EXIT CONDITION
+              console.log('All parts written to disk')
+              res.writeHead(200)
+              res.end()
+              processFile(filename, entryID)
+            }
+          })
+        })
+        busboy.on('end', function() {
+          console.log('Done parsing form!')
+          done = true
+        })
+        req.pipe(busboy)
+      })
 
+      function onFile(entryID, file, filename, next) {
+        var fstream = fs.createWriteStream('./temp/' + filename)
+        console.log(entryID + '(' + filename + ') start saving')
+        file.pipe(fstream)
+        file.on('end', function() {
+          console.log(entryID + '(' + filename + ') EOF')
+        })
+        fstream.on('close', function() {
+          console.log(entryID + '(' + filename + ') written to disk . ID ')
+          next()
+        })
+      }
+
+      function processFile (filename, entryID) {
+        console.log('im a process that is running for ' + filename + ' with ID ' + entryID)
+        // crunch diff sizes S M L (max)
+        // move to new user dir / entryID as name
+        // write the path to the db (overriting any existing)
+        // then delete temp file
+      }
+
+// ======================================================================================
 
       // insert new record
       socket.on('newEntry', function(err){
@@ -133,7 +190,6 @@ io.sockets.on('connection', function(socket) {
 
       socket.on('disconnect', function(){
         console.log('socket.io disconnect event fired')
-        //
         // log the disconnect to a global json.. (reasons? flushing scheme/reap?, also needs to include user, entryID, time)
         // socket.emit disconnect client code = ur in offline mode / read only
         // fired in all cases when client closed.
