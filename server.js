@@ -26,10 +26,15 @@ io.configure('development', function(){
 // Start server
 var app = express()
 app.set('port', process.env.PORT || 3000)
-
 app.use(express.logger('dev'))
 app.use(express.static('./public'))
   // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
+app.use(express.bodyParser({
+  keepExtensions: true,
+  uploadDir: './temp',
+  limit: '15mb'
+}))
+app.use(express.methodOverride())
 app.listen(app.get('port'))
   // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
 
@@ -97,78 +102,11 @@ io.sockets.on('connection', function(socket) {
       })
 
 
-// -----------upload-------------------------------------------------------------
-
-
-      // start file upload
-      var chunkSize = 524288
-      var files = {}
-      var tempPath
-      socket.on('startUpload', function(fileName, fileSize, entryID) {
-        console.log('STARTED')
-        files.fileName = {
-          fileName: fileName,
-          fileSize: fileSize,
-          data: '',
-          downloaded: 0
-        }
-        var place = 0
-        tempPath = 'temp/' +  entryID + '-' + fileName
-
-        try {
-          console.log('TRY')
-          var stat = fs.statSync(tempPath)
-          if (stat.isFile()) {
-            files.fileName.downloaded = stat.size
-            place = stat.size / chunkSize
-          }
-        }
-        catch(err) {
-          console.log('CATCH')
-          fs.open(tempPath, 'a', 0755, function(err, fd){
-            if (err) throw err
-            var percent = 0
-            files.fileName.handler = fd
-            socket.emit('moreData', place, percent)
-          })
-        }
-
-      })
-
-      // processing chunks from client
-      socket.on('upload', function(fileName, data) {
-        console.log('ON UPLOAD')
-        files.fileName.downloaded += data.length
-        files.fileName.data += data
-
-        if (files.fileName.downloaded === files.fileName.fileSize) { // upload complete
-          console.log('COMPLETE')
-          fs.write(files.fileName.handler, files.fileName.data, null, 'Binary', function(err){ // processImages() later: process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina). filePath = './public/uploads/' + user + '/' + name, insert db path records
-            if (err) throw err
-            socket.emit('sendSuccessful', files.fileName)
-          })
-        }
-
-        else if (files.fileName.data.length > 10485760) { // buffer full
-          console.log('^ drain buffer');
-          fs.write(files.fileName.handler, files.fileName.data, null, 'Binary', function(err){
-            if (err) throw err
-            files.fileName.data = '';
-            var place = files.fileName.downloaded / chunkSize
-            var percent = (files.fileName.downloaded / files.fileName.fileSize) * 100
-            socket.emit('moreData', files.fileName)
-          })
-        }
-        else { // incomplete
-          console.log('INCOMPLETE')
-          var place = files.fileName.downloaded / chunkSize // ISSUE being calculated wrong on 2nd pass
-          var percent = (files.fileName.downloaded / files.fileName.fileSize) * 100 // **** ISSUE being calculated wrong always
-          socket.emit('moreData', place, percent)
-        }
-      })
-
-
-// ----------------------------------------------------------
+      app.post('/', function(req, res) {
+        console.log('upload success!')
+        console.log(req.files);
+        res.end();
+      });
 
 
       // insert new record

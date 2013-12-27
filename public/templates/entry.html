@@ -1,7 +1,7 @@
 <!-- entry template -->
 
 <div class="entry" data-id="">
-  
+
   <div class="entry-meta">
     <div class="status">
       <span class="date"></span>
@@ -22,19 +22,21 @@
     </div>
     <div class="btn-newFile"></div>
   </div>
-  
+
   <br>
-  
+
   <div class="entryEditor">
-    
+
     <!-- !! server to eval on load whether image present or not and adjust classes display accordingly -->
-    
+
     <!-- title -->
     <textarea class="title" autocomplete="off" placeholder="Type your title"></textarea>
-    
+
     <!-- file -->
     <div class="fileContainer">
-        <input class="input hidden" id="input" type="file" accept="image/gif, image/jpeg, image/png">
+        <form method="post" action="/">
+          <input class="input hidden" id="input" type="file" accept="image/gif, image/jpeg, image/png">
+        </form>
         <div class="file hidden">
           <img class="cover" src="">
           <div class="fileSizeError">
@@ -43,11 +45,11 @@
           </div>
         </div>
     </div>
-    
-        
+
+
     <!-- content -->
     <textarea class="content transition" autocomplete="off" placeholder="Type your content"></textarea>
-    
+
   </div>
-  
+
 </div>

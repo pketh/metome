@@ -214,7 +214,7 @@ $(document).ready(function () {
     $('.status .date').text(entryMonthStr + ', ' + entryYear)
     $('.content').autosize()
     $('.title').focus()
-    if (!(window.File && window.FileReader)) {
+    if (!(window.XMLHttpRequest)) {
       $('.btn-newFile').addClass('hidden')
     }
     sendFile(entryID)
@@ -223,21 +223,35 @@ $(document).ready(function () {
 // --------------------------------------------------------------------------------------------------------
 
 
-  var reader = new FileReader()
-  var chunkSize = 524288
-  var file
-  var fileName
-
   function sendFile(entryID) {
-    $('input').change(function() {
-      file = this.files[0]
-      fileName = file.name
+    $('input').change(function(event) {
+      event.preventDefault()
+      var file = this.files[0]
+      var fileName = file.name
       var fileSize = file.size
       var fileSizeLimit = 15000000
 
       if (fileSize <= fileSizeLimit) {
         renderPreview(file)
-        emitFile(fileSize, entryID)
+
+        var formData = new FormData()
+        formData.append(fileName, file)
+        var xhr = new XMLHttpRequest()
+        xhr.open('post', '/', true)
+        xhr.upload.onprogress = function(event) { // put in progress
+          var percent = (event.loaded / event.total) * 100
+          progressUpdate(percent)
+        }
+
+        xhr.onerror = function(e) {
+          console.log('xhr error')
+        }
+
+        xhr.onload = function() {
+          console.log(this.statusText);
+        }
+
+        xhr.send(formData);
 
       } else {
         renderTooBig(fileSizeLimit)
@@ -246,14 +260,6 @@ $(document).ready(function () {
     })
   }
 
-  socket.on('moreData', function (place, percent) {
-    console.log('MOREDATA')
-    progressUpdate(percent)
-    var startPlace = place * chunkSize
-    var newChunk
-    newChunk = file.slice(startPlace, startPlace + Math.min(chunkSize, (file.fileSize-startPlace)))
-    reader.readAsBinaryString(newChunk)
-  })
 
 
 
@@ -262,17 +268,8 @@ $(document).ready(function () {
 
 
 
-  function emitFile(fileSize, entryID) {
-    reader.onload = function(event) {
-      var data = event.target.result
-      socket.emit('upload', fileName, data)
-      console.log('UPLOAD')
-    }
-    socket.emit('startUpload', fileName, fileSize, entryID)
-    console.log('START')
-  }
 
-
+//
   socket.on('sendSuccessful', function(writing) {
     console.log('sendSuccessful triggered for ' + writing.entryID + '. File should be in temp folder.')
     $('.status .sendfile').addClass('hidden')
