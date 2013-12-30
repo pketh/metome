@@ -2,12 +2,15 @@
 
 // (╯°□°）╯︵ ┻━┻
 
-
+// TODO:
+// make node style modules of this with
+// https://github.com/bengourley/module.js
+// use grunt to concatenate/minify/bring together everythign , w a sourcemap
 
 $(document).ready(function () {
 
   var socket = io.connect('http://localhost:8000')
-  var user = 'pirijan'; // TODO - auth
+    , user = 'pirijan'; // TODO - auth
 
   socket.on('connect', function () {
     socket.emit('login', user )
@@ -171,10 +174,11 @@ $(document).ready(function () {
 
   function saveTitle(event, entryID) {
     var newTitle = $('.title').val()
+      , listItem = $('.entriesList li[data-id=' + entryID + ']')
+
     socket.emit('titleEdited', { title: newTitle }, entryID)
     console.log('Saving... ' + 'title ' + entryID)
     console.log(newTitle)
-    var listItem = $('.entriesList li[data-id=' + entryID + ']')
     listItem.empty().append(newTitle)
   }
 
@@ -207,7 +211,7 @@ $(document).ready(function () {
     var months = {
       0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec'
     }
-    var entryMonthStr = months[entryMonth] // entryMonth is between 0 and 11
+      , entryMonthStr = months[entryMonth] // entryMonth is between 0 and 11
     $('.entry').attr('data-id', entryID)
     $('.entry .title').append(entry.title)
     $('.entry .content').append(entry.content)
@@ -227,15 +231,15 @@ $(document).ready(function () {
     $('input').change(function(event) {
       event.preventDefault()
       var file = this.files[0]
-      var fileName = file.name
-      var fileSize = file.size
-      var fileSizeLimit = 15000000
+        , fileName = file.name
+        , fileSize = file.size
+        , fileSizeLimit = 15000000
 
       if (fileSize <= fileSizeLimit) {
         renderPreview(file)
         var formData = new FormData()
+          , xhr = new XMLHttpRequest()
         formData.append(entryID, file)
-        var xhr = new XMLHttpRequest()
         xhr.open('post', '/', true, user)
         xhr.upload.onprogress = function(event) { // put in progress
           var percent = (event.loaded / event.total) * 100
@@ -280,7 +284,7 @@ $(document).ready(function () {
 
   function renderPreview(file) {
     var windowURL = window.URL || window.webkitURL
-    var blobURL = windowURL.createObjectURL(file)
+      , blobURL = windowURL.createObjectURL(file)
     $('.status .date').addClass('hidden')
     $('.status .savetext').addClass('hidden')
     $('.status .sendfile').removeClass('hidden')

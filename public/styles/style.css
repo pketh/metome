@@ -117,6 +117,8 @@ li {}
 .cover {
   max-height: 666px;
   max-width: 100%;
+  cursor: -webkit-zoom-in;
+  cursor: -moz-zoom-in;
 }
 
 .fileSizeError {
