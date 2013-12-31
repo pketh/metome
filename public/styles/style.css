@@ -3,8 +3,6 @@
 
 .assetPreloader {
   position: absolute;
-  height: 0px;
-  width: 0px;
   background: url('../assets/sendFile.svg'), url('../assets/sendFile-hover.svg'), url('../assets/replaceFile.svg'), url('../assets/replaceFile-hover.svg');
 }
 
@@ -80,7 +78,7 @@ li {}
 }
 
 .status {
-  color: grey;
+  color: #CCC;
   font-size: 12px;
 }
 
@@ -119,6 +117,8 @@ li {}
 .cover {
   max-height: 666px;
   max-width: 100%;
+  cursor: -webkit-zoom-in;
+  cursor: -moz-zoom-in;
 }
 
 .fileSizeError {

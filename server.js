@@ -3,37 +3,57 @@
 // ┬──┬ ◡ﾉ(° -°ﾉ)
 
 
-// Node Modules
-var MongoClient = require('mongodb'),
-  ObjectId = require('mongodb').ObjectID,
-  express = require('express'),
-  http = require('http'),
-  io = require('socket.io').listen(8000),
-  fs = require('fs'),
-  exec = require('child_process').exec,
-  util = require('util')
+// npm
+var mongo     = require('mongodb')
+  , ObjectId  = require('mongodb').ObjectID
+  , express   = require('express')
+  , http      = require('http')
+  , io        = require('socket.io').listen(8000)
+  , fs        = require('fs')
+  , exec      = require('child_process').exec
+  , util      = require('util').inspect
+  , busBoy    = require('busboy')
+  , gm        = require('gm')
+  , mv        = require('mv')
+  , mkdirp    = require('mkdirp')
+  , glob      = require('glob')
+  , colors    = require('colors')
   // --> auth http://www.senchalabs.org/connect/basicAuth.html
-  
-// Metome Modules
-// var settings
-// require('./metome_modules/settings.js')
 
-// Configure
+// metome modules
+  // require('./metome_modules/settings.js')
+
+// configure
 io.configure('development', function(){
   io.set('log level', 2) // default is 3 (shows full debug)
 })
 
-// Start server
+colors.setTheme({
+  silly: 'rainbow',
+  input: 'grey',
+  verbose: 'cyan',
+  prompt: 'grey',
+  info: 'green',
+  data: 'grey',
+  help: 'cyan',
+  warn: 'yellow',
+  debug: 'blue',
+  error: 'red'
+})
+
+
+// start server
 var app = express()
 app.set('port', process.env.PORT || 3000)
-
 app.use(express.logger('dev'))
 app.use(express.static('./public'))
-  // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
 app.listen(app.get('port'))
-  // add staticcache/redis http://www.senchalabs.org/connect/staticCache.html
 
 
+// routes
+
+// https://npmjs.org/package/api
+// .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
 
 
 // events
@@ -41,33 +61,33 @@ io.sockets.on('connection', function(socket) {
   socket.on('login', function(username){
     var user = username
 
-    MongoClient.connect('mongodb://localhost/metome', function(err, db) { // make mongo address non-fixed? (hits a replicant on dev , prod on prod)
+    mongo.connect('mongodb://localhost/metome', function(err, db) { // update to nodejitsu/mongolab path
       if (err) throw err
       var collection = db.collection(user)
-      
+
       // entries successful emits on connect
       collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
         if (err) throw err
         socket.emit('entriesSuccessful', titles)
       })
-      
+
       // load individual entry
       socket.on('entry', function(entryID){
         console.log(entryID)
-        collection.findOne({ _id : ObjectId ( entryID ) },function(err,entry) {
+        collection.findOne({ '_id' : new ObjectId ( entryID ) }, function(err,entry) {
           if (err) throw err
-          var entryDate = new Date( (ObjectId(entryID).getTimestamp()) )
-          var entryMonth = entryDate.getMonth()
-          var entryYear = entryDate.getFullYear()
+          var entryDate  = new Date( (new ObjectId(entryID).getTimestamp()) )
+            , entryMonth = entryDate.getMonth()
+            , entryYear  = entryDate.getFullYear()
           // logic for whether the entry has an image or not. nofile or hasfile
           socket.emit('entrySuccessful', entry, entryMonth, entryYear, entryID)
         })
       })
-      
+
       // write title on changes
       socket.on('titleEdited', function(newTitle, entryID) {
         collection.update(
-          { '_id' : ObjectId ( entryID ) },
+          { '_id' : new ObjectId ( entryID ) },
           { $set:
            newTitle
           },
@@ -83,7 +103,7 @@ io.sockets.on('connection', function(socket) {
       // write content on changes
       socket.on('contentEdited', function(newContent, entryID) {
         collection.update(
-          { '_id' : ObjectId ( entryID ) },
+          { '_id' : new ObjectId ( entryID ) },
           { $set:
            newContent
           },
@@ -96,72 +116,164 @@ io.sockets.on('connection', function(socket) {
         )
       })
 
+      // receive image
+      app.post('/', function(req, res) {
+        console.log('upload going')
+        var infiles = 0,
+          outfiles = 0,
+          done = false,
+          busboy = new busBoy({
+            headers: req.headers,
+            limits: {
+              fileSize: 15000000,
+              files: 1
+            }
+          })
+        console.log('Start parsing form ...')
+        busboy.on('file', function(entryID, file, filename, encoding, mimetype) {
+          ++infiles
+          var filetype = filename.substr((~-filename.lastIndexOf('.') >>> 0) + 2) // http://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript
+          , tempfile = './temp/' + filename
+          onFile(file, tempfile, function() {
+            ++outfiles
+            if (done)
+              console.log(outfiles + '/' + infiles + ' parts written to disk')
+            if (done && infiles === outfiles) {
+              console.log('All parts written to disk')
+              res.writeHead(200)
+              res.end()
+              processFile(entryID, filename, filetype, tempfile)
 
-// ----------------------------------------------------------
+              // console.log('processing done tasks hit'.silly)
 
 
-      // start file upload
-      socket.on('startSend', function(fileName, fileSize, entryID) {
-        var chunkSize = 262144 // ~.256kb
-        console.log('\n \n$ startSend hit for ' + fileName)
-        var fileWriting = { // create new entry in files {}
-          fileName : fileName,
-          fileSize : fileSize,
-          data : '',
-          downloaded : 0,
-          place : 0,
-          percent : 0
-        }
-        var place = fileWriting.place
-        var percent = fileWriting.percent
-        var tempPath = 'temp/' +  entryID + '-' + fileName
+                // cleanup(targetPath, filetype)
+                        // remove unused cover images
+        // function cleanup(targetPath, filetype) {
+        //   // TODO: kill unused old files.
+        //   // https://npmjs.org/package/glob
+        //   // GLOB
+        //   console.log('clean function hit ...')
+        // }
 
-        fs.open(tempPath, "a", 0755, function(err, fd){
+                 // add function callback here to move original ?>...
+                // move original
+                // mv(tempfile, targetPath + '/entryID.', function(err) {
+                //   if (err) throw err
+                //   console.log('original moved')
+                // });
+            }
+          })
+        })
+        busboy.on('end', function() {
+          console.log('Done parsing form!')
+          done = true
+        })
+        req.pipe(busboy)
+      })
+
+      function onFile(file, tempfile, next) {
+        var fstream = fs.createWriteStream(tempfile)
+        console.log(tempfile + ' start saving.')
+        file.pipe(fstream)
+        file.on('end', function() {
+          console.log(tempfile + ' EOF')
+        })
+        fstream.on('close', function() {
+          console.log(tempfile + ' written to disk')
+          next()
+        })
+      }
+
+      // process images
+      function processFile(entryID, filename, filetype, tempfile) {
+        var targetPath  = './public/uploads/' + user + '/' + entryID
+          , thumb   = targetPath + '/thumb.png'
+          , thumb2x = targetPath + '/thumb@2x.png'
+          , mask   = './public/assets/mask.png'
+          , mask2x   = './public/assets/mask@2x.png'
+          , cover   = targetPath + '/cover.' + filetype
+          , cover2x = targetPath + '/cover@2x.' + filetype
+          , thumbWidth = 21
+          , thumbHeight = 34
+          , thumbOffset = 38
+          , coverWidth = 760
+
+        mkdirp(targetPath, function (err) {
           if (err) throw err
-          console.log('NEW FILE: ' + fileName + ' ' + percent + '% at place ' + place)
-          fileWriting['handler'] = fd // store the file handler to fs.write to later
-          socket.emit('moreChunks', place, entryID, percent, fileName)
-          console.log('+1 NEW FILE moreChunks: ' + fileName + ' chunks needed at place ' + place + ' and percent ' + percent) // ISSUE
+          console.log(targetPath + ' pow!')
+          // thumb
+          gm(tempfile)
+            .quality(90)
+            .resize(null, thumbOffset)
+            .gravity('Center')
+            .crop(thumbWidth, thumbHeight)
+            .write(thumb, function (err) {
+              if (err) throw err
+              console.log('thumb sized')
+              compositeMask(thumb, mask, function(){
+                console.log('mask1 done')
+              })
+            })
+          // thumb@2x
+          gm(tempfile)
+            .quality(90)
+            .resize(null, thumbOffset * 2)
+            .gravity('Center')
+            .crop(thumbWidth * 2, thumbHeight * 2)
+            .write(thumb2x, function (err) {
+              if (err) throw err
+              console.log('thumb@2x sized')
+              compositeMask(thumb2x, mask2x, function(){
+                console.log('mask2x done')
+                socket.emit('uploadSuccess', entryID, thumb2x) //
+              })
+            })
+          // cover
+          gm(tempfile)
+            .resize(coverWidth)
+            .write(cover, function (err) {
+              if (err) throw err
+              console.log('cover done')
+              pathUpdate(entryID, { cover: cover })
+            })
+          // cover@2x
+          gm(tempfile)
+            .resize(coverWidth * 2)
+            .write(cover2x, function (err) {
+              if (err) throw err
+              console.log('cover@2x done')
+              pathUpdate(entryID, { cover2x: cover2x })
+            })
         })
 
-        // processing the file pieces from client
-        socket.on('sendChunk', function(data, fileName, fileSize, entryID) {
-          console.log('- sendChunk hit for ' + fileName) // ISSUE asks for previous/complete and new here
-          fileWriting['downloaded'] += data.length
-          fileWriting['data'] += data
+        // mask the thumb
+        function compositeMask(thumb, mask, next) {
+          var gmComposite = 'gm composite -compose in ' + thumb + ' ' + mask + ' ' + thumb
+          exec(gmComposite, function(err) {
+            if (err) throw err
+            pathUpdate(entryID, { thumb: thumb })
+            next()
+          })
+        }
 
+        // update db
+        function pathUpdate(entryID, record) {
+          collection.update(
+            { '_id' : new ObjectId ( entryID ) },
+            { $set:
+             record
+            },
+            {upsert: true},
+            function (err) {
+              if (err) throw err
+              console.log(Object.keys(record) + ' updated in db!')
+            }
+          )
+        }
+      } // closes processfile
 
-          if (fileWriting['downloaded'] == fileWriting['fileSize']) { // file is fully uploaded (downloaded = filesize)
-            fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){ // write buffer to the file
-              console.log('SUCCESS: ' + fileName)
-              // later: process images into S, M, L (ie. entryID-S.png) into real filePath folders(retina). filePath = './public/uploads/' + user + '/' + name
-              socket.emit('sendSuccessful', entryID)
-            })
-          }
-
-          else if (fileWriting['data'].length > 10485760){ //If the Data Buffer reaches 10MB
-            fs.write(fileWriting['handler'], fileWriting['data'], null, 'Binary', function(err, Writen){
-              fileWriting['data'] = ""; //Reset The Buffer
-              var place = fileWriting['downloaded'] / chunkSize
-              var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100
-              socket.emit('moreChunks', place, entryID, percent, fileName)
-            })
-          }
-
-          else { // need more chunks please // 2nd file hits need chunks even if it's less than 256kb
-            var place = fileWriting['downloaded'] / chunkSize
-            console.log('+ moreChunks: ' + fileName + ' chunks needed at place ' + place + ' and percent ' + percent) // ISSUE asks for previous/complete and new here
-            var percent = (fileWriting['downloaded'] / fileWriting['fileSize']) * 100
-              socket.emit('moreChunks', place, entryID, percent, fileName) // requesting more file pieces
-          }
-        })
-      }) // close startSend
-
-
-// ----------------------------------------------------------
-
-
-
+// ======================================================================================
 
       // insert new record
       socket.on('newEntry', function(err){
@@ -170,86 +282,32 @@ io.sockets.on('connection', function(socket) {
         collection.insert(document, function(err, entry) {
           if (err) throw err
           var entryID = entry[0]._id
-          console.log("Record added as "+ entryID)
+          console.log('Record added as ' + entryID)
           socket.emit('newEntrySuccess', entryID)
         })
       })
-      
+
       socket.on('removeEntry', function(entryID){
         collection.remove(
-          { '_id': ObjectId ( entryID ) },
+          { '_id': new ObjectId ( entryID ) },
           function(err){
             if (err) throw err;
             console.log('record deleted: ' + entryID)
             socket.emit('removeEntrySuccess', entryID)
           })
       })
-      
+
       socket.on('disconnect', function(){
         console.log('socket.io disconnect event fired')
-        //
-        // log the disconnect to a global json.. (reasons?, also needs to include user, entryID, time)
+        // log the disconnect to a global json.. (reasons? flushing scheme/reap?, also needs to include user, entryID, time)
         // socket.emit disconnect client code = ur in offline mode / read only
         // fired in all cases when client closed.
         // for reconnect, you have to use the 'connection' event
       })
-      
-      
-    
+
+
     }) // close mongo
-  
+
   }) // close user 'login' socket
-  
+
 }) // closes socket.io
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
