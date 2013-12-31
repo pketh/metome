@@ -17,6 +17,7 @@ var mongo     = require('mongodb')
   , mv        = require('mv')
   , mkdirp    = require('mkdirp')
   , glob      = require('glob')
+  , colors    = require('colors')
   // --> auth http://www.senchalabs.org/connect/basicAuth.html
 
 // metome modules
@@ -26,6 +27,20 @@ var mongo     = require('mongodb')
 io.configure('development', function(){
   io.set('log level', 2) // default is 3 (shows full debug)
 })
+
+colors.setTheme({
+  silly: 'rainbow',
+  input: 'grey',
+  verbose: 'cyan',
+  prompt: 'grey',
+  info: 'green',
+  data: 'grey',
+  help: 'cyan',
+  warn: 'yellow',
+  debug: 'blue',
+  error: 'red'
+})
+
 
 // start server
 var app = express()
@@ -127,15 +142,26 @@ io.sockets.on('connection', function(socket) {
               console.log('All parts written to disk')
               res.writeHead(200)
               res.end()
-              processFile(entryID, filename, filetype, tempfile, function() {
-                console.log('move original hit')
-                 // add function callback                                                          here to move original ?>...
+              processFile(entryID, filename, filetype, tempfile)
+
+              // console.log('processing done tasks hit'.silly)
+
+
+                // cleanup(targetPath, filetype)
+                        // remove unused cover images
+        // function cleanup(targetPath, filetype) {
+        //   // TODO: kill unused old files.
+        //   // https://npmjs.org/package/glob
+        //   // GLOB
+        //   console.log('clean function hit ...')
+        // }
+
+                 // add function callback here to move original ?>...
                 // move original
                 // mv(tempfile, targetPath + '/entryID.', function(err) {
                 //   if (err) throw err
                 //   console.log('original moved')
                 // });
-              })
             }
           })
         })
@@ -162,35 +188,32 @@ io.sockets.on('connection', function(socket) {
       // process images
       function processFile(entryID, filename, filetype, tempfile) {
         var targetPath  = './public/uploads/' + user + '/' + entryID
-          , thumb   = targetPath + '/thumb.' + filetype
-          , thumb2x = targetPath + '/thumb@2x.' + filetype
+          , thumb   = targetPath + '/thumb.png'
+          , thumb2x = targetPath + '/thumb@2x.png'
+          , mask   = './public/assets/mask.png'
+          , mask2x   = './public/assets/mask@2x.png'
           , cover   = targetPath + '/cover.' + filetype
           , cover2x = targetPath + '/cover@2x.' + filetype
-          , thumbHeight = 34
           , thumbWidth = 21
+          , thumbHeight = 34
           , thumbOffset = 38
           , coverWidth = 760
-          , imageMagick = gm.subClass({ imageMagick: true }) // may not be necessary
+
         mkdirp(targetPath, function (err) {
           if (err) throw err
           console.log(targetPath + ' pow!')
-
-
           // thumb
           gm(tempfile)
             .quality(90)
             .resize(null, thumbOffset)
             .gravity('Center')
             .crop(thumbWidth, thumbHeight)
-            .mask('./public/assets/mask.png') // LATER: masks don't run http://stackoverflow.com/questions/20828951/graphicsmagick-for-node-not-masking
-            // what gm mask does: supplied png protects pixels from subsequent alteration if additional processing / drawing is performed on the image.
-            // how it works: the protected pixels are copied to a temp buffer, and then applied back to the final image .
-            // .drawRectangle() // .. override but then the image is non-transparent
-            .clip()
             .write(thumb, function (err) {
               if (err) throw err
-              console.log('thumb done')
-              pathUpdate(entryID, { thumb: thumb })
+              console.log('thumb sized')
+              compositeMask(thumb, mask, function(){
+                console.log('mask1 done')
+              })
             })
           // thumb@2x
           gm(tempfile)
@@ -198,19 +221,15 @@ io.sockets.on('connection', function(socket) {
             .resize(null, thumbOffset * 2)
             .gravity('Center')
             .crop(thumbWidth * 2, thumbHeight * 2)
-            .mask('./public/assets/mask@2x.png') //
             .write(thumb2x, function (err) {
               if (err) throw err
-              console.log('thumb@2x done')
-              pathUpdate(entryID, { thumb2x: thumb2x }, function(err) {
-                if (err) throw err
-                console.log('ready to update entrylist w thumb2x ...')
-                // TODO: update entry list name w new thumb , EMIT and cient.js to update the list.
-                // draw updates are retina by default. loads will be specific
+              console.log('thumb@2x sized')
+              compositeMask(thumb2x, mask2x, function(){
+                console.log('mask2x done')
+                socket.emit('uploadSuccess', entryID, thumb2x) //
               })
             })
           // cover
-          // TODO make these a bit wider in order to do a Medium style lightbox zoom
           gm(tempfile)
             .resize(coverWidth)
             .write(cover, function (err) {
@@ -226,10 +245,17 @@ io.sockets.on('connection', function(socket) {
               console.log('cover@2x done')
               pathUpdate(entryID, { cover2x: cover2x })
             })
-
-          cleanup(targetPath, filetype)
-
         })
+
+        // mask the thumb
+        function compositeMask(thumb, mask, next) {
+          var gmComposite = 'gm composite -compose in ' + thumb + ' ' + mask + ' ' + thumb
+          exec(gmComposite, function(err) {
+            if (err) throw err
+            pathUpdate(entryID, { thumb: thumb })
+            next()
+          })
+        }
 
         // update db
         function pathUpdate(entryID, record) {
@@ -245,19 +271,7 @@ io.sockets.on('connection', function(socket) {
             }
           )
         }
-
-        // remove unused cover images
-        function cleanup(targetPath, filetype) {
-          // TODO: kill unused old files.
-          // https://npmjs.org/package/glob
-          // GLOB
-          console.log('clean function hit ...')
-        }
-
-
-
-
-      }
+      } // closes processfile
 
 // ======================================================================================
 
