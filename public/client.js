@@ -9,8 +9,9 @@
 
 $(document).ready(function () {
 
-  var socket = io.connect('http://localhost:8000')
-    , user = 'pirijan'; // TODO - auth
+  var io,
+    socket = io.connect('http://localhost:8000'),
+    user = 'pirijan'; // TODO - auth
 
   socket.on('connect', function () {
     socket.emit('login', user )
@@ -262,6 +263,8 @@ $(document).ready(function () {
 
   socket.on('uploadSuccess', function(filename) {
     console.log(filename + ' saved!')
+    // use to zoom in on thumbs:
+// https://github.com/yyx990803/zoomerang/blob/master/zoomerang.js
   })
 
 

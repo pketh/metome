@@ -29,17 +29,30 @@ io.configure('development', function(){
 })
 
 colors.setTheme({
-  silly: 'rainbow',
-  input: 'grey',
-  verbose: 'cyan',
-  prompt: 'grey',
-  info: 'green',
-  data: 'grey',
-  help: 'cyan',
-  warn: 'yellow',
-  debug: 'blue',
-  error: 'red'
+  silly: 'rainbow'
+, input: 'grey'
+, verbose: 'cyan'
+, prompt: 'grey'
+, info: 'green'
+, data: 'grey'
+, help: 'cyan'
+, warn: 'yellow'
+, debug: 'blue'
+, error: 'red'
 })
+// NPM COLOR THEME CUSTOMIZE (multichainable)
+// italic
+// underline
+// yellow ..
+// cyan ..
+// white
+// magenta -> status:
+// green ..
+// red
+// grey
+// blue
+// rainbow
+// zebra
 
 
 // start server
@@ -116,6 +129,8 @@ io.sockets.on('connection', function(socket) {
         )
       })
 
+// =====================================================================================================
+
       // receive image
       app.post('/', function(req, res) {
         console.log('upload going')
@@ -129,7 +144,6 @@ io.sockets.on('connection', function(socket) {
               files: 1
             }
           })
-        console.log('Start parsing form ...')
         busboy.on('file', function(entryID, file, filename, encoding, mimetype) {
           ++infiles
           var filetype = filename.substr((~-filename.lastIndexOf('.') >>> 0) + 2) // http://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript
@@ -144,7 +158,12 @@ io.sockets.on('connection', function(socket) {
               res.end()
               processFile(entryID, filename, filetype, tempfile)
 
-              // console.log('processing done tasks hit'.silly)
+
+// 1. clean up folder (cover and cover2x replication)
+// 2. move original file .. 1/2 or just copy (somewhere in processfile) and run reap against time in temp and , unrefeced in mongo to do periodic clean ups
+// 3. client -> update the list w new thumb
+// 4. client -> list updates include thumbnail fetching
+// 5. client -> loading entry includes thumbnail
 
 
                 // cleanup(targetPath, filetype)
@@ -157,7 +176,7 @@ io.sockets.on('connection', function(socket) {
         // }
 
                  // add function callback here to move original ?>...
-                // move original
+                // move original // --> switch to copy / reap?
                 // mv(tempfile, targetPath + '/entryID.', function(err) {
                 //   if (err) throw err
                 //   console.log('original moved')
@@ -188,16 +207,16 @@ io.sockets.on('connection', function(socket) {
       // process images
       function processFile(entryID, filename, filetype, tempfile) {
         var targetPath  = './public/uploads/' + user + '/' + entryID
-          , thumb   = targetPath + '/thumb.png'
-          , thumb2x = targetPath + '/thumb@2x.png'
-          , mask   = './public/assets/mask.png'
-          , mask2x   = './public/assets/mask@2x.png'
-          , cover   = targetPath + '/cover.' + filetype
-          , cover2x = targetPath + '/cover@2x.' + filetype
-          , thumbWidth = 21
+          , thumb       = targetPath + '/thumb.png'
+          , thumb2x     = targetPath + '/thumb@2x.png'
+          , mask        = './public/assets/mask.png'
+          , mask2x      = './public/assets/mask@2x.png'
+          , cover       = targetPath + '/cover.' + filetype
+          , cover2x     = targetPath + '/cover@2x.' + filetype
+          , thumbWidth  = 21
           , thumbHeight = 34
           , thumbOffset = 38
-          , coverWidth = 760
+          , coverWidth  = 760
 
         mkdirp(targetPath, function (err) {
           if (err) throw err
@@ -208,6 +227,7 @@ io.sockets.on('connection', function(socket) {
             .resize(null, thumbOffset)
             .gravity('Center')
             .crop(thumbWidth, thumbHeight)
+            .noProfile()
             .write(thumb, function (err) {
               if (err) throw err
               console.log('thumb sized')
@@ -221,6 +241,7 @@ io.sockets.on('connection', function(socket) {
             .resize(null, thumbOffset * 2)
             .gravity('Center')
             .crop(thumbWidth * 2, thumbHeight * 2)
+            .noProfile()
             .write(thumb2x, function (err) {
               if (err) throw err
               console.log('thumb@2x sized')
@@ -232,6 +253,7 @@ io.sockets.on('connection', function(socket) {
           // cover
           gm(tempfile)
             .resize(coverWidth)
+            .noProfile()
             .write(cover, function (err) {
               if (err) throw err
               console.log('cover done')
@@ -240,12 +262,13 @@ io.sockets.on('connection', function(socket) {
           // cover@2x
           gm(tempfile)
             .resize(coverWidth * 2)
+            .noProfile()
             .write(cover2x, function (err) {
               if (err) throw err
               console.log('cover@2x done')
               pathUpdate(entryID, { cover2x: cover2x })
             })
-        })
+        }) // closes mkdirp
 
         // mask the thumb
         function compositeMask(thumb, mask, next) {
