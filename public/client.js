@@ -17,9 +17,9 @@ $(document).ready(function () {
     //
   })
 
-  // list entries (triggered by connection)
+  // list entries (triggered by connection .. for now)
   socket.on('entriesSuccessful', function(titles){
-    console.log('entries successfully retrieved ABC')
+    console.log('entries successfully retrieved')
     titles.forEach(function (titleIndex) {
       if (titleIndex.title === '') {
         $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>')
@@ -307,6 +307,7 @@ $(document).ready(function () {
     $('.btn-newFile').addClass('btn-replaceFile')
     $('.fileSizeError').addClass('hidden')
     $('.cover').attr('src', blobURL )
+    Zoomerang.listen('.cover') // options at https://github.com/yyx990803/zoomerang
   }
 
   function renderTooBig() {
