@@ -9,8 +9,8 @@
 
 $(document).ready(function () {
 
-  var socket = io.connect('http://localhost:8000')
-    , user = 'pirijan'; // TODO - auth
+  var socket = io.connect('http://localhost:8000'),
+    user = 'pirijan'; // TODO - auth
 
   socket.on('connect', function () {
     socket.emit('login', user )
@@ -19,7 +19,7 @@ $(document).ready(function () {
 
   // list entries (triggered by connection)
   socket.on('entriesSuccessful', function(titles){
-    console.log('entries successfully retrieved')
+    console.log('entries successfully retrieved ABC')
     titles.forEach(function (titleIndex) {
       if (titleIndex.title === '') {
         $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>')
@@ -163,6 +163,7 @@ $(document).ready(function () {
   // trying start fades out ui (save btn , img btn)
   // move mouse triggers it back in
 
+
   // -------------upload-tasks------------------------------------------------------------
 
 
@@ -221,13 +222,15 @@ $(document).ready(function () {
     if (!(window.XMLHttpRequest)) {
       $('.btn-newFile').addClass('hidden')
     }
-    sendFile(entryID)
+    uploadFile(entryID)
   }
+
+
 
 // --------------------------------------------------------------------------------------------------------
 
 
-  function sendFile(entryID) {
+  function uploadFile(entryID) {
     $('input').change(function(event) {
       event.preventDefault()
       var file = this.files[0]
@@ -249,7 +252,7 @@ $(document).ready(function () {
           console.log('xhr error')
         }
         xhr.onload = function() {
-          sendSuccessful()
+          uploadSuccessful()
         }
         xhr.send(formData);
 
@@ -260,10 +263,9 @@ $(document).ready(function () {
     })
   }
 
-  socket.on('uploadSuccess', function(filename) {
-    console.log(filename + ' saved!')
+  $('.cover').on('click', function(){
+    console.log('cover clicked')
   })
-
 
 
 // --------------------------------------------------------------------------------------------------------
@@ -271,12 +273,24 @@ $(document).ready(function () {
 
 
 
-  function sendSuccessful() {
+  function uploadSuccessful() {
     $('.status .sendfile').addClass('hidden')
     $('.status .savetext').removeClass('hidden')
     $('.status .saved').removeClass('hidden')
     $('.sendfile .progress').val(0).text('0%')
   }
+
+  socket.on('thumbSuccess', function(entryID, thumb2x) {
+    console.log('BEEEP thumb2x gm processed on server!')
+    console.log('upload list with : ' + entryID + thumb2x)
+
+    // use artsy style thumb generation
+    // https://github.com/yyx990803/zoomerang/blob/master/zoomerang.js
+    // 3. client -> update the list w new thumb
+    // 4. client -> list updates include thumbnail fetching
+    // 5. client -> loading entry includes thumbnail
+  })
+
 
   function progressUpdate(percent) {
     $('.sendfile .progress').val(percent).text(percent + '%')

@@ -14,11 +14,10 @@ var mongo     = require('mongodb')
   , util      = require('util').inspect
   , busBoy    = require('busboy')
   , gm        = require('gm')
-  , mv        = require('mv')
   , mkdirp    = require('mkdirp')
-  , glob      = require('glob')
   , colors    = require('colors')
-  // --> auth http://www.senchalabs.org/connect/basicAuth.html
+  , dive      = require('dive')
+  // --> auth http://www.senchalabs.org/connect/basicAuth.html, for express?
 
 // metome modules
   // require('./metome_modules/settings.js')
@@ -29,18 +28,14 @@ io.configure('development', function(){
 })
 
 colors.setTheme({
-  silly: 'rainbow',
-  input: 'grey',
-  verbose: 'cyan',
-  prompt: 'grey',
-  info: 'green',
-  data: 'grey',
-  help: 'cyan',
-  warn: 'yellow',
-  debug: 'blue',
-  error: 'red'
+  silly: 'rainbow'
+, info: 'grey'
+, help: 'blue'
+, status: 'blue'
+, warn: 'yellow'
+, debug: 'magenta'
+, error: 'red'
 })
-
 
 // start server
 var app = express()
@@ -116,55 +111,54 @@ io.sockets.on('connection', function(socket) {
         )
       })
 
+// upload tasks start =====================================================================================================
+
       // receive image
       app.post('/', function(req, res) {
         console.log('upload going')
-        var infiles = 0,
-          outfiles = 0,
-          done = false,
-          busboy = new busBoy({
+        var infiles = 0
+          , outfiles = 0
+          , done = false
+          , busboy = new busBoy({
             headers: req.headers,
             limits: {
               fileSize: 15000000,
               files: 1
             }
           })
-        console.log('Start parsing form ...')
-        busboy.on('file', function(entryID, file, filename, encoding, mimetype) {
-          ++infiles
-          var filetype = filename.substr((~-filename.lastIndexOf('.') >>> 0) + 2) // http://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript
-          , tempfile = './temp/' + filename
-          onFile(file, tempfile, function() {
-            ++outfiles
-            if (done)
-              console.log(outfiles + '/' + infiles + ' parts written to disk')
-            if (done && infiles === outfiles) {
-              console.log('All parts written to disk')
-              res.writeHead(200)
-              res.end()
-              processFile(entryID, filename, filetype, tempfile)
+        busboy.on('file', function(entryID, file, fileName, encoding, mimetype) {
+          var fileType = fileName.substr((~-fileName.lastIndexOf('.') >>> 0) + 2)
+            , targetPath  = './public/uploads/' + user + '/' + entryID
+            , newFile = targetPath + '/' + fileName
 
-              // console.log('processing done tasks hit'.silly)
+          console.log(newFile)
+
+          mkdirp(targetPath, function (err) {
+            if (err) throw err
+            console.log(targetPath + ' pow!');
+            ++infiles
+
+            onFile(file, newFile, function() {
+              ++outfiles
+              if (done)
+                console.log(outfiles + '/' + infiles + ' parts written to disk')
+              if (done && infiles === outfiles) {
+                console.log('All parts written to disk')
+
+                res.writeHead(200)
+                res.end()
 
 
-                // cleanup(targetPath, filetype)
-                        // remove unused cover images
-        // function cleanup(targetPath, filetype) {
-        //   // TODO: kill unused old files.
-        //   // https://npmjs.org/package/glob
-        //   // GLOB
-        //   console.log('clean function hit ...')
-        // }
 
-                 // add function callback here to move original ?>...
-                // move original
-                // mv(tempfile, targetPath + '/entryID.', function(err) {
-                //   if (err) throw err
-                //   console.log('original moved')
-                // });
-            }
+                processFile(entryID, fileType, targetPath, newFile)
+                cleanDir(targetPath, fileName, fileType)
+
+
+              }
+            })
           })
         })
+
         busboy.on('end', function() {
           console.log('Done parsing form!')
           done = true
@@ -172,92 +166,117 @@ io.sockets.on('connection', function(socket) {
         req.pipe(busboy)
       })
 
-      function onFile(file, tempfile, next) {
-        var fstream = fs.createWriteStream(tempfile)
-        console.log(tempfile + ' start saving.')
+      function onFile(file, newFile, next) {
+        var fstream = fs.createWriteStream(newFile)
+        console.log(newFile + ' start saving.'.debug)
         file.pipe(fstream)
+        console.log('file pipe'.debug)
         file.on('end', function() {
-          console.log(tempfile + ' EOF')
+          console.log(newFile + ' EOF')
         })
         fstream.on('close', function() {
-          console.log(tempfile + ' written to disk')
+          console.log(newFile + ' written to disk')
           next()
         })
       }
 
+      // removes previous uploads
+      function cleanDir(targetPath, fileName, fileType){
+        dive(targetPath, function(err, file) {
+          if (err) throw err
+          if (!(file.match(fileName + '|(thumb|cover|@2x)(?=.' + fileType + ')'))) {
+            fs.unlink(file)
+          }
+        })
+      }
+
       // process images
-      function processFile(entryID, filename, filetype, tempfile) {
-        var targetPath  = './public/uploads/' + user + '/' + entryID
-          , thumb   = targetPath + '/thumb.png'
-          , thumb2x = targetPath + '/thumb@2x.png'
-          , mask   = './public/assets/mask.png'
-          , mask2x   = './public/assets/mask@2x.png'
-          , cover   = targetPath + '/cover.' + filetype
-          , cover2x = targetPath + '/cover@2x.' + filetype
-          , thumbWidth = 21
+      function processFile(entryID, fileType, targetPath, newFile) {
+        console.log('processFile hit'.debug)
+        var thumb       = targetPath + '/thumb.png'
+          , thumb2x     = targetPath + '/thumb@2x.png'
+          , mask        = './public/assets/mask.png'
+          , mask2x      = './public/assets/mask@2x.png'
+          , cover       = targetPath + '/cover.' + fileType
+          , cover2x     = targetPath + '/cover@2x.' + fileType
+          , thumbWidth  = 21
           , thumbHeight = 34
           , thumbOffset = 38
-          , coverWidth = 760
+          , coverWidth  = 760
 
-        mkdirp(targetPath, function (err) {
-          if (err) throw err
-          console.log(targetPath + ' pow!')
-          // thumb
-          gm(tempfile)
-            .quality(90)
-            .resize(null, thumbOffset)
-            .gravity('Center')
-            .crop(thumbWidth, thumbHeight)
-            .write(thumb, function (err) {
-              if (err) throw err
-              console.log('thumb sized')
-              compositeMask(thumb, mask, function(){
-                console.log('mask1 done')
-              })
-            })
-          // thumb@2x
-          gm(tempfile)
-            .quality(90)
-            .resize(null, thumbOffset * 2)
-            .gravity('Center')
-            .crop(thumbWidth * 2, thumbHeight * 2)
-            .write(thumb2x, function (err) {
-              if (err) throw err
-              console.log('thumb@2x sized')
-              compositeMask(thumb2x, mask2x, function(){
-                console.log('mask2x done')
-                socket.emit('uploadSuccess', entryID, thumb2x) //
-              })
-            })
-          // cover
-          gm(tempfile)
-            .resize(coverWidth)
-            .write(cover, function (err) {
-              if (err) throw err
-              console.log('cover done')
-              pathUpdate(entryID, { cover: cover })
-            })
-          // cover@2x
-          gm(tempfile)
-            .resize(coverWidth * 2)
-            .write(cover2x, function (err) {
-              if (err) throw err
-              console.log('cover@2x done')
-              pathUpdate(entryID, { cover2x: cover2x })
-            })
-        })
-
-        // mask the thumb
-        function compositeMask(thumb, mask, next) {
-          var gmComposite = 'gm composite -compose in ' + thumb + ' ' + mask + ' ' + thumb
-          exec(gmComposite, function(err) {
+        // original
+        collection.update(
+          { '_id' : new ObjectId ( entryID ) },
+          { $set:
+           { original: newFile }
+          },
+          {upsert: true},
+          function (err) {
             if (err) throw err
+            console.log('original written to db')
+          }
+        )
+
+        // thumb
+        gm(newFile)
+          .quality(90)
+          .resize(null, thumbOffset)
+          .gravity('Center')
+          .crop(thumbWidth, thumbHeight)
+          .noProfile()
+          .write(thumb, function (err) {
+            if (err) throw err
+            console.log('thumb sized')
             pathUpdate(entryID, { thumb: thumb })
-            next()
+            compositeMask(thumb, mask, function(){
+              console.log('thumb-mask1 done')
+            })
           })
+        // thumb@2x
+        gm(newFile)
+          .quality(90)
+          .resize(null, thumbOffset * 2)
+          .gravity('Center')
+          .crop(thumbWidth * 2, thumbHeight * 2)
+          .noProfile()
+          .write(thumb2x, function (err) {
+            if (err) throw err
+            console.log('thumb@2x sized')
+            pathUpdate(entryID, { thumb2x: thumb2x })
+            compositeMask(thumb2x, mask2x, function(){
+              console.log('thumb-mask2x done')
+              thumbSuccess()
+            })
+          })
+
+        function thumbSuccess() {
+          socket.emit('thumbSuccess', entryID, thumb2x)
+          console.log('EEEP doing something: ' + entryID + thumb2x.silly)
         }
 
-        // update db
+
+        // cover
+        gm(newFile)
+          .resize(coverWidth)
+          .noProfile()
+          .write(cover, function (err) {
+            if (err) throw err
+            console.log('cover done')
+            pathUpdate(entryID, { cover: cover })
+          })
+        // cover@2x
+        gm(newFile)
+          .resize(coverWidth * 2)
+          .noProfile()
+          .write(cover2x, function (err) {
+            if (err) throw err
+            console.log('cover@2x done')
+            pathUpdate(entryID, { cover2x: cover2x })
+          })
+
+
+
+        // update db w image paths
         function pathUpdate(entryID, record) {
           collection.update(
             { '_id' : new ObjectId ( entryID ) },
@@ -271,9 +290,19 @@ io.sockets.on('connection', function(socket) {
             }
           )
         }
+
+        // mask the thumb
+        function compositeMask(thumb, mask, next) {
+          var gmComposite = 'gm composite -compose in ' + thumb + ' ' + mask + ' ' + thumb
+          exec(gmComposite, function(err) {
+            if (err) throw err
+            next()
+          })
+        }
+
       } // closes processfile
 
-// ======================================================================================
+// upload tasks end ======================================================================================
 
       // insert new record
       socket.on('newEntry', function(err){
