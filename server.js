@@ -245,12 +245,12 @@ io.sockets.on('connection', function(socket) {
             pathUpdate(entryID, { thumb2x: thumb2x })
             compositeMask(thumb2x, mask2x, function(){
               console.log('thumb-mask2x done')
-              thumbProcessed()
+              thumbSuccess()
             })
           })
 
-        function thumbProcessed() {
-          socket.emit('thumbProcessed', entryID, thumb2x)
+        function thumbSuccess() {
+          socket.emit('thumbSuccess', entryID, thumb2x)
           console.log('EEEP doing something: ' + entryID + thumb2x.silly)
         }
 

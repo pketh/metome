@@ -280,8 +280,8 @@ $(document).ready(function () {
     $('.sendfile .progress').val(0).text('0%')
   }
 
-  socket.on('thumbProcessed', function(entryID, thumb2x) {
-    console.log('BEEEP upload processed on server!')
+  socket.on('thumbSuccess', function(entryID, thumb2x) {
+    console.log('BEEEP thumb2x gm processed on server!')
     console.log('upload list with : ' + entryID + thumb2x)
 
     // use artsy style thumb generation
