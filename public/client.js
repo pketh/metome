@@ -5,7 +5,14 @@
 // TODO:
 // make node style modules of this with
 // https://github.com/bengourley/module.js
-// use grunt to concatenate/minify/bring together everythign , w a sourcemap
+// use grunt to concatenate/minify/bring together everythign , w a sourcemap?
+
+
+/*
+*
+* Connection
+*
+*/
 
 $(document).ready(function () {
 
@@ -17,33 +24,79 @@ $(document).ready(function () {
     //
   })
 
+
+/*
+*
+* Entries List
+*
+*/
+
   // list entries (triggered by connection)
   socket.on('entriesSuccessful', function(titles){
-    console.log('entries successfully retrieved ABC')
-    titles.forEach(function (titleIndex) {
-      if (titleIndex.title === '') {
-        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>')
+    titles.forEach(function (title) {
+      if (title.title === '') {
+        $('.entriesList').append(
+          '<li data-id = "' + title._id +'">'
+            + 'Blank entry.'
+          + '</li>'
+        )
+      } else if (title.thumb) {
+        var thumbPath = title.thumb.substring(8)
+        $('.entriesList').append(
+          '<li data-id = "' + title._id + '">' + title.title
+            + '<img class="thumb" src="' + thumbPath + '">'
+          + '</li>'
+        )
       } else {
-        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>')
+        $('.entriesList').append(
+          '<li data-id = "' + title._id + '">'
+            + title.title
+          + '</li>'
+        )
       }
     })
   })
 
+
+/*
+*
+* Entry
+*
+*/
+
   // request an entry
   $('.entriesList').on('click', 'li', function(){
     var entryID = $(this).data('id')
-    socket.emit('entry', entryID)
-    // clearEntry()
-    // $('entryContainer').empty()
+    socket.emit('requestEntry', entryID)
   })
 
   // load the entry based into .entry
-  socket.on('entrySuccessful', function(entry, entryMonth, entryYear, entryID){
-
-    // load entryTemplate into entrycontainer
+  socket.on('loadEntry', function(entry, entryMonth, entryYear, entryID){
     $('.entryContainer').load('templates/entry.html', function() {
+      var months = {
+        0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec'
+      }
+        , entryMonthStr = months[entryMonth]
+      $('.entry').attr('data-id', entryID)
+      $('.entry .title').append(entry.title)
+      $('.entry .content').append(entry.content)
+      $('.status .date').text(entryMonthStr + ', ' + entryYear)
+      $('.content').autosize()
+      $('.title').focus()
+      if (entry.cover) {
+        var coverPath = entry.cover.substring(8)
+        $('.cover').removeClass('hidden')
+        $('.cover').attr('src', coverPath )
+      }
+      if (!(window.XMLHttpRequest)) {
+        $('.btn-newFile').addClass('hidden')
+      }
+      $('.cover').on('click', function() {
+        $('.cover').toggleClass('cover-out')
+      })
+      Zoomerang.listen('.cover')
 
-      loadEntry(entry, entryMonth, entryYear, entryID)
+      uploadTasks(entryID)
 
       // title saving
       $('.title').typing({
@@ -75,6 +128,23 @@ $(document).ready(function () {
         delay: 400
       })
 
+      // save entry
+      function saveTitle(event, entryID) {
+          var newTitle = $('.title').val()
+            , listItem = $('.entriesList li[data-id=' + entryID + ']')
+          socket.emit('saveTitle', { title: newTitle }, entryID)
+          console.log('Saving... ' + 'title ' + entryID)
+          console.log(newTitle)
+          listItem.empty().append(newTitle)
+        }
+
+      // save content
+      function saveContent(event, entryID) {
+          var newContent = $('.content').val()
+          socket.emit('saveContent', { content: newContent }, entryID)
+          console.log('Saving... ' + newContent + ' entryID ' + entryID)
+        }
+
       // delete button view logic
       $('.delete').on('click', function() {
         $('.delete').addClass('hidden')
@@ -87,7 +157,7 @@ $(document).ready(function () {
         $('.destroyCancel').addClass('hidden')
       })
 
-      // destroy/remove entry
+      // destroy entry
       $('.destroy').on('click', function(){
         var entryID= $('.entry').attr('data-id')
         console.log('delete triggered for ' + entryID)
@@ -99,13 +169,10 @@ $(document).ready(function () {
         $('input').click()
       })
 
-    })
-  }) // close entry
 
-  // settings view
-  $('.settings').on('click', function(){
-    console.log('settings clicked')
+    })
   })
+
 
   // make new entry
   $('.newEntry').on('click', function(){
@@ -129,8 +196,124 @@ $(document).ready(function () {
     viewEntries(entryID) // --> replace with updateList(entryID)?
   })
 
-  // -------------------------------------------------------------------------
+  function entryListRemove(entryID) {
+    var listItem = $('.entriesList li[data-id=' + entryID + ']')
+    listItem.remove()
+    console.log(entryID + ' removed from entries list')
+  }
 
+  // back to viewing the entries list
+  function viewEntries(entryID) { // triggered by browser back. or deleting an entry
+    console.log('verifying that viewEntries has ID: ' + entryID)
+    // DO LATER: move the view back to the entries list w history
+    $('.entry').remove()
+  }
+
+  function displaySaving() {
+    $('.status .date').addClass('hidden')
+    $('.status .saving').removeClass('hidden')
+    $('.status .saved').addClass('hidden')
+  }
+
+  function displaySaved() {
+    $('.status .saved').removeClass('hidden')
+    $('.status .saving').addClass('hidden')
+  }
+
+
+/*
+*
+* Image upload tasks
+*
+*/
+
+  function uploadTasks(entryID) {
+    $('input').change(function(event) {
+      event.preventDefault()
+      var file = this.files[0]
+        , fileName = file.name
+        , fileSize = file.size
+        , fileSizeLimit = 15000000
+
+      if (fileSize <= fileSizeLimit) {
+        renderPreview(file)
+        var formData = new FormData()
+          , xhr = new XMLHttpRequest()
+        formData.append(entryID, file)
+        xhr.open('post', '/', true, user)
+        xhr.upload.onprogress = function(event) {
+          var percent = (event.loaded / event.total) * 100
+          progressUpdate(percent)
+        }
+        xhr.onerror = function() {
+          console.log('xhr error')
+        }
+        xhr.onload = function() {
+          uploadSuccessful()
+        }
+        xhr.send(formData);
+
+      } else {
+        renderTooBig()
+      }
+    })
+  }
+
+  function renderPreview(file) {
+    var windowURL = window.URL || window.webkitURL
+      , blobURL = windowURL.createObjectURL(file)
+    $('.status .date').addClass('hidden')
+    $('.status .savetext').addClass('hidden')
+    $('.status .sendfile').removeClass('hidden')
+    $('.cover').removeClass('hidden')
+    $('.cover').removeClass('hidden')
+    $('.btn-newFile').addClass('btn-replaceFile')
+    $('.fileSizeError').addClass('hidden')
+    $('.cover').attr('src', blobURL )
+  }
+
+  function renderTooBig() {
+    $('.cover').addClass('hidden')
+    $('.fileSizeError').removeClass('hidden')
+  }
+
+  function progressUpdate(percent) {
+    $('.sendfile .progress').val(percent).text(percent + '%')
+  }
+
+  function uploadSuccessful() {
+    $('.status .sendfile').addClass('hidden')
+    $('.status .savetext').removeClass('hidden')
+    $('.status .saved').removeClass('hidden')
+    $('.sendfile .progress').val(0).text('0%')
+  }
+
+  socket.on('thumbSuccess', function(entryID, thumb2x) {
+    console.log('BEEEP thumb2x gm processed on server!')
+    console.log('upload list with : ' + entryID + thumb2x)
+    // update the list with the new thumb next to the entryid list on save --------------------------------------------------------,,,,,,,,,
+    // var listItem = $('.entriesList li[data-id=' + entryID + ']')
+    // listItem.empty().append(newTitle) <-- how txt does it
+  })
+
+
+/*
+*
+* Settings
+*
+*/
+
+  // settings view
+  $('.settings').on('click', function(){
+    console.log('settings clicked')
+  })
+
+
+/*
+*
+* Offline support
+*
+*/
 
   socket.on('disconnect', function(){
     console.log('disconnected')
@@ -158,162 +341,5 @@ $(document).ready(function () {
     // make sure the list doesn't append again to replicate on top of existing
   })
 
-  // buttons / ui (delete and addCover) visible on load
-  // ui present on load
-  // trying start fades out ui (save btn , img btn)
-  // move mouse triggers it back in
 
-
-  // -------------upload-tasks------------------------------------------------------------
-
-
-  function entryListRemove(entryID) {
-    var listItem = $('.entriesList li[data-id=' + entryID + ']')
-    listItem.remove()
-    console.log(entryID + ' removed from entries list')
-  }
-
-  function saveTitle(event, entryID) {
-    var newTitle = $('.title').val()
-      , listItem = $('.entriesList li[data-id=' + entryID + ']')
-
-    socket.emit('titleEdited', { title: newTitle }, entryID)
-    console.log('Saving... ' + 'title ' + entryID)
-    console.log(newTitle)
-    listItem.empty().append(newTitle)
-  }
-
-  function saveContent(event, entryID) {
-    var newContent = $('.content').val()
-    socket.emit('contentEdited', { content: newContent }, entryID)
-    console.log('Saving... ' + newContent + ' entryID ' + entryID)
-  }
-
-  function displaySaving() {
-    $('.status .date').addClass('hidden')
-    $('.status .saving').removeClass('hidden')
-    $('.status .saved').addClass('hidden')
-  }
-
-  function displaySaved() {
-    $('.status .saved').removeClass('hidden')
-    $('.status .saving').addClass('hidden')
-  }
-
-  // back to viewing the entries list
-  function viewEntries(entryID) { // triggered by browser back. or deleting an entry
-    console.log('verifying that viewEntries has ID: ' + entryID)
-    // DO LATER: move the view back to the entries list
-    $('.entry').remove()
-  }
-
-  // load entry tasks
-  function loadEntry(entry, entryMonth, entryYear, entryID) {
-    var months = {
-      0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec'
-    }
-      , entryMonthStr = months[entryMonth] // entryMonth is between 0 and 11
-    $('.entry').attr('data-id', entryID)
-    $('.entry .title').append(entry.title)
-    $('.entry .content').append(entry.content)
-    $('.status .date').text(entryMonthStr + ', ' + entryYear)
-    $('.content').autosize()
-    $('.title').focus()
-    if (!(window.XMLHttpRequest)) {
-      $('.btn-newFile').addClass('hidden')
-    }
-    uploadFile(entryID)
-  }
-
-
-
-// --------------------------------------------------------------------------------------------------------
-
-
-  function uploadFile(entryID) {
-    $('input').change(function(event) {
-      event.preventDefault()
-      var file = this.files[0]
-        , fileName = file.name
-        , fileSize = file.size
-        , fileSizeLimit = 15000000
-
-      if (fileSize <= fileSizeLimit) {
-        renderPreview(file)
-        var formData = new FormData()
-          , xhr = new XMLHttpRequest()
-        formData.append(entryID, file)
-        xhr.open('post', '/', true, user)
-        xhr.upload.onprogress = function(event) { // put in progress
-          var percent = (event.loaded / event.total) * 100
-          progressUpdate(percent)
-        }
-        xhr.onerror = function() {
-          console.log('xhr error')
-        }
-        xhr.onload = function() {
-          uploadSuccessful()
-        }
-        xhr.send(formData);
-
-      } else {
-        renderTooBig()
-      }
-
-    })
-  }
-
-  $('.cover').on('click', function(){
-    console.log('cover clicked')
-  })
-
-
-// --------------------------------------------------------------------------------------------------------
-
-
-
-
-  function uploadSuccessful() {
-    $('.status .sendfile').addClass('hidden')
-    $('.status .savetext').removeClass('hidden')
-    $('.status .saved').removeClass('hidden')
-    $('.sendfile .progress').val(0).text('0%')
-  }
-
-  socket.on('thumbSuccess', function(entryID, thumb2x) {
-    console.log('BEEEP thumb2x gm processed on server!')
-    console.log('upload list with : ' + entryID + thumb2x)
-
-    // use artsy style thumb generation
-    // https://github.com/yyx990803/zoomerang/blob/master/zoomerang.js
-    // 3. client -> update the list w new thumb
-    // 4. client -> list updates include thumbnail fetching
-    // 5. client -> loading entry includes thumbnail
-  })
-
-
-  function progressUpdate(percent) {
-    $('.sendfile .progress').val(percent).text(percent + '%')
-  }
-
-  function renderPreview(file) {
-    var windowURL = window.URL || window.webkitURL
-      , blobURL = windowURL.createObjectURL(file)
-    $('.status .date').addClass('hidden')
-    $('.status .savetext').addClass('hidden')
-    $('.status .sendfile').removeClass('hidden')
-    $('.file').removeClass('hidden')
-    $('.cover').removeClass('hidden')
-    $('.btn-newFile').addClass('btn-replaceFile')
-    $('.fileSizeError').addClass('hidden')
-    $('.cover').attr('src', blobURL )
-  }
-
-  function renderTooBig() {
-    $('.file').removeClass('hidden')
-    $('.cover').addClass('hidden')
-    $('.fileSizeError').removeClass('hidden') // render the fileSizeError message
-  }
-
-
-}) // close domready
+})

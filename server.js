@@ -49,6 +49,7 @@ app.listen(app.get('port'))
 
 // https://npmjs.org/package/api
 // .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
+// relation with history ..
 
 
 // events
@@ -61,26 +62,26 @@ io.sockets.on('connection', function(socket) {
       var collection = db.collection(user)
 
       // entries successful emits on connect
-      collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
+      collection.find( {}, { title : 1, thumb: 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
         if (err) throw err
         socket.emit('entriesSuccessful', titles)
       })
 
       // load individual entry
-      socket.on('entry', function(entryID){
+      socket.on('requestEntry', function(entryID){
         console.log(entryID)
         collection.findOne({ '_id' : new ObjectId ( entryID ) }, function(err,entry) {
           if (err) throw err
           var entryDate  = new Date( (new ObjectId(entryID).getTimestamp()) )
             , entryMonth = entryDate.getMonth()
             , entryYear  = entryDate.getFullYear()
-          // logic for whether the entry has an image or not. nofile or hasfile
-          socket.emit('entrySuccessful', entry, entryMonth, entryYear, entryID)
+            , cover = new ObjectId(entryID)
+          socket.emit('loadEntry', entry, entryMonth, entryYear, entryID)
         })
       })
 
       // write title on changes
-      socket.on('titleEdited', function(newTitle, entryID) {
+      socket.on('saveTitle', function(newTitle, entryID) {
         collection.update(
           { '_id' : new ObjectId ( entryID ) },
           { $set:
@@ -96,7 +97,7 @@ io.sockets.on('connection', function(socket) {
       })
 
       // write content on changes
-      socket.on('contentEdited', function(newContent, entryID) {
+      socket.on('saveContent', function(newContent, entryID) {
         collection.update(
           { '_id' : new ObjectId ( entryID ) },
           { $set:
