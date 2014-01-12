@@ -75,9 +75,8 @@ io.sockets.on('connection', function(socket) {
           var entryDate  = new Date( (new ObjectId(entryID).getTimestamp()) )
             , entryMonth = entryDate.getMonth()
             , entryYear  = entryDate.getFullYear()
-            , cover = new ObjectId(entryID) // /////////////////////////////////// include cover as part of the db query........
-          // logic for whether the entry has an image or not. nofile or hasfile ...........................................................
-          socket.emit('loadEntry', entry, entryMonth, entryYear, entryID, cover)
+            , cover = new ObjectId(entryID)
+          socket.emit('loadEntry', entry, entryMonth, entryYear, entryID)
         })
       })
 

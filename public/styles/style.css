@@ -58,7 +58,14 @@ img {
   margin-bottom: 10px;
   background-position: center center;
   max-width: 666px;
-  max-height: 666px;
+  max-width: 100%;
+  cursor: -webkit-zoom-in;
+  cursor: -moz-zoom-in;
+}
+
+.cover-out {
+  cursor: -webkit-zoom-out;
+  cursor: -moz-zoom-out;
 }
 
 .thumb {
@@ -122,12 +129,6 @@ li {}
   margin-bottom: 35px;
 }
 
-.cover {
-  max-height: 666px;
-  max-width: 100%;
-  cursor: -webkit-zoom-in;
-  cursor: -moz-zoom-in;
-}
 
 .fileSizeError {
   width: 357px;

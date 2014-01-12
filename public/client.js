@@ -7,6 +7,7 @@
 // https://github.com/bengourley/module.js
 // use grunt to concatenate/minify/bring together everythign , w a sourcemap?
 
+
 /*
 *
 * Connection
@@ -22,6 +23,7 @@ $(document).ready(function () {
     socket.emit('login', user )
     //
   })
+
 
 /*
 *
@@ -55,6 +57,7 @@ $(document).ready(function () {
     })
   })
 
+
 /*
 *
 * Entry
@@ -68,7 +71,7 @@ $(document).ready(function () {
   })
 
   // load the entry based into .entry
-  socket.on('loadEntry', function(entry, entryMonth, entryYear, entryID, cover){
+  socket.on('loadEntry', function(entry, entryMonth, entryYear, entryID){
     $('.entryContainer').load('templates/entry.html', function() {
       var months = {
         0:'Jan', 1:'Feb', 2:'Mar', 3:'Apr', 4:'May', 5:'Jun', 6:'Jul', 7:'Aug', 8:'Sep', 9:'Oct', 10:'Nov', 11:'Dec'
@@ -80,16 +83,19 @@ $(document).ready(function () {
       $('.status .date').text(entryMonthStr + ', ' + entryYear)
       $('.content').autosize()
       $('.title').focus()
-
-      console.log ('no cover should be null/undefined: ' + cover) // temp
-
-      if (cover) {
-        console.log('this has a cover path: ' + cover)
+      if (entry.cover) {
+        var coverPath = entry.cover.substring(8)
+        $('.cover').removeClass('hidden')
+        $('.cover').attr('src', coverPath )
       }
-
       if (!(window.XMLHttpRequest)) {
         $('.btn-newFile').addClass('hidden')
       }
+      $('.cover').on('click', function() {
+        $('.cover').toggleClass('cover-out')
+      })
+      Zoomerang.listen('.cover')
+
       uploadTasks(entryID)
 
       // title saving
@@ -259,18 +265,16 @@ $(document).ready(function () {
     $('.status .date').addClass('hidden')
     $('.status .savetext').addClass('hidden')
     $('.status .sendfile').removeClass('hidden')
-    $('.file').removeClass('hidden')
+    $('.cover').removeClass('hidden')
     $('.cover').removeClass('hidden')
     $('.btn-newFile').addClass('btn-replaceFile')
     $('.fileSizeError').addClass('hidden')
     $('.cover').attr('src', blobURL )
-    // Zoomerang.listen('.cover') // options at https://github.com/yyx990803/zoomerang................................................
   }
 
   function renderTooBig() {
-    $('.file').removeClass('hidden')
     $('.cover').addClass('hidden')
-    $('.fileSizeError').removeClass('hidden') // render the fileSizeError message
+    $('.fileSizeError').removeClass('hidden')
   }
 
   function progressUpdate(percent) {
@@ -287,9 +291,9 @@ $(document).ready(function () {
   socket.on('thumbSuccess', function(entryID, thumb2x) {
     console.log('BEEEP thumb2x gm processed on server!')
     console.log('upload list with : ' + entryID + thumb2x)
-    // update the list with the new thumb next to the entryid list --------------------------------------------------------,,,,,,,,,
+    // update the list with the new thumb next to the entryid list on save --------------------------------------------------------,,,,,,,,,
     // var listItem = $('.entriesList li[data-id=' + entryID + ']')
-    // listItem.empty().append(newTitle)
+    // listItem.empty().append(newTitle) <-- how txt does it
   })
 
 

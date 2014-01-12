@@ -22,8 +22,8 @@
         transitionTimingFunction: 'cubic-bezier(.4,0,0,1)',
         bgColor: '#fff',
         bgOpacity: 1,
-        maxWidth: 300,
-        maxHeight: 300
+        maxWidth: 1000,
+        maxHeight: 1000
     }
 
     // compatibility stuff
@@ -92,7 +92,7 @@
             if (overlay.style[prop] !== undefined) {
                 ret.transform = prop
                 return true
-            }  
+            }
         })
         return ret
     }
@@ -263,7 +263,7 @@
                     api.open(el)
                 }
             })
-            
+
             return this
         }
     }
