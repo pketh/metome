@@ -28,14 +28,8 @@
   <div class="entryEditor">
 
     <!-- !! server to eval on load whether image present or not and adjust classes display accordingly -->
-
-    <!-- title -->
-    <textarea class="title" autocomplete="off" placeholder="Type your title"></textarea>
-
-    <!-- file -->
     <div class="fileContainer">
         <form method="post" action="/" enctype="multipart/form-data">
-        <!-- add name to input = entryID -->
           <input class="input hidden" id="input" type="file" accept="image/gif, image/jpeg, image/png">
         </form>
         <div class="file hidden">
@@ -46,6 +40,11 @@
           </div>
         </div>
     </div>
+
+    <!-- title -->
+    <textarea class="title" autocomplete="off" placeholder="Type your title"></textarea>
+
+    <!-- file -->
 
 
     <!-- content -->
