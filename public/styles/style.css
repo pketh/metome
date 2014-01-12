@@ -50,11 +50,19 @@
   outline: none;
 }
 
+img {
+    max-width: 100%;
+}
+
 .cover {
   margin-bottom: 10px;
   background-position: center center;
   max-width: 666px;
   max-height: 666px;
+}
+
+.thumb {
+  /*height and width here*/
 }
 
 .metome {

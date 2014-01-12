@@ -7,6 +7,13 @@
 // https://github.com/bengourley/module.js
 // use grunt to concatenate/minify/bring together everythign , w a sourcemap
 
+/*
+*
+* Connection
+*
+*/
+
+
 $(document).ready(function () {
 
   var socket = io.connect('http://localhost:8000'),
@@ -17,6 +24,12 @@ $(document).ready(function () {
     //
   })
 
+/*
+*
+* Entries List
+*
+*/
+
   // list entries (triggered by connection .. for now)
   socket.on('entriesSuccessful', function(titles){
     console.log('entries successfully retrieved')
@@ -24,10 +37,21 @@ $(document).ready(function () {
       if (titleIndex.title === '') {
         $('.entriesList').append('<li data-id = "' + titleIndex._id + '">Blank entry.</li>')
       } else {
-        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>')
+        $('.entriesList').append('<li data-id = "' + titleIndex._id + '">' + titleIndex.title+ '</li>') // append titleIndex.thumb TEMP-----
+        console.log('entry ' + titleIndex.title + 'thumb = ' + titleIndex.thumb)
+        if (titleIndex.thumb) {
+          console.log('thumb is true for ' + titleIndex.title)
+          // if this true check works then use this to append to li w hard baked width
+        }
       }
     })
   })
+
+/*
+*
+* Entry
+*
+*/
 
   // request an entry
   $('.entriesList').on('click', 'li', function(){
@@ -100,12 +124,8 @@ $(document).ready(function () {
       })
 
     })
-  }) // close entry
-
-  // settings view
-  $('.settings').on('click', function(){
-    console.log('settings clicked')
   })
+
 
   // make new entry
   $('.newEntry').on('click', function(){
@@ -129,7 +149,24 @@ $(document).ready(function () {
     viewEntries(entryID) // --> replace with updateList(entryID)?
   })
 
-  // -------------------------------------------------------------------------
+
+/*
+*
+* Settings
+*
+*/
+
+  // settings view
+  $('.settings').on('click', function(){
+    console.log('settings clicked')
+  })
+
+
+/*
+*
+* Offline support
+*
+*/
 
 
   socket.on('disconnect', function(){
@@ -164,7 +201,11 @@ $(document).ready(function () {
   // move mouse triggers it back in
 
 
-  // -------------upload-tasks------------------------------------------------------------
+/*
+*
+* Misc closures (move into section)...........................................................................
+*
+*/
 
 
   function entryListRemove(entryID) {
@@ -225,10 +266,11 @@ $(document).ready(function () {
     uploadFile(entryID)
   }
 
-
-
-// --------------------------------------------------------------------------------------------------------
-
+/*
+*
+* Image Upload Tasks
+*
+*/
 
   function uploadFile(entryID) {
     $('input').change(function(event) {
@@ -244,7 +286,7 @@ $(document).ready(function () {
           , xhr = new XMLHttpRequest()
         formData.append(entryID, file)
         xhr.open('post', '/', true, user)
-        xhr.upload.onprogress = function(event) { // put in progress
+        xhr.upload.onprogress = function(event) {
           var percent = (event.loaded / event.total) * 100
           progressUpdate(percent)
         }
@@ -259,41 +301,7 @@ $(document).ready(function () {
       } else {
         renderTooBig()
       }
-
     })
-  }
-
-  $('.cover').on('click', function(){
-    console.log('cover clicked')
-  })
-
-
-// --------------------------------------------------------------------------------------------------------
-
-
-
-
-  function uploadSuccessful() {
-    $('.status .sendfile').addClass('hidden')
-    $('.status .savetext').removeClass('hidden')
-    $('.status .saved').removeClass('hidden')
-    $('.sendfile .progress').val(0).text('0%')
-  }
-
-  socket.on('thumbSuccess', function(entryID, thumb2x) {
-    console.log('BEEEP thumb2x gm processed on server!')
-    console.log('upload list with : ' + entryID + thumb2x)
-
-    // use artsy style thumb generation
-    // https://github.com/yyx990803/zoomerang/blob/master/zoomerang.js
-    // 3. client -> update the list w new thumb
-    // 4. client -> list updates include thumbnail fetching
-    // 5. client -> loading entry includes thumbnail
-  })
-
-
-  function progressUpdate(percent) {
-    $('.sendfile .progress').val(percent).text(percent + '%')
   }
 
   function renderPreview(file) {
@@ -307,7 +315,7 @@ $(document).ready(function () {
     $('.btn-newFile').addClass('btn-replaceFile')
     $('.fileSizeError').addClass('hidden')
     $('.cover').attr('src', blobURL )
-    Zoomerang.listen('.cover') // options at https://github.com/yyx990803/zoomerang
+    Zoomerang.listen('.cover') // options at https://github.com/yyx990803/zoomerang.
   }
 
   function renderTooBig() {
@@ -316,5 +324,24 @@ $(document).ready(function () {
     $('.fileSizeError').removeClass('hidden') // render the fileSizeError message
   }
 
+  function progressUpdate(percent) {
+    $('.sendfile .progress').val(percent).text(percent + '%')
+  }
 
-}) // close domready
+  function uploadSuccessful() {
+    $('.status .sendfile').addClass('hidden')
+    $('.status .savetext').removeClass('hidden')
+    $('.status .saved').removeClass('hidden')
+    $('.sendfile .progress').val(0).text('0%')
+  }
+
+  socket.on('thumbSuccess', function(entryID, thumb2x) {
+    console.log('BEEEP thumb2x gm processed on server!')
+    console.log('upload list with : ' + entryID + thumb2x)
+    // update the list with the new thumb next to the entryid list --------------------------------------------------------,,,,,,,,,
+    // var listItem = $('.entriesList li[data-id=' + entryID + ']')
+    // listItem.empty().append(newTitle)
+  })
+
+
+})

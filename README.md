@@ -5,6 +5,14 @@ A learning exercise to push a db entry down to the client (through JSON), and th
 
 - using mongo, node, client JS
 
+## Starting it up
+		$ mongod
+		$ node server.js
+		http://localhost:3000/metome.html <-- this may change
+
+and if you want to run queries:
+		$ mongo
+
 ## JS styleguide and .jshintrc
 		https://github.com/reqshark/js-standards
 

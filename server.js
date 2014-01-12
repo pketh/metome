@@ -61,7 +61,7 @@ io.sockets.on('connection', function(socket) {
       var collection = db.collection(user)
 
       // entries successful emits on connect
-      collection.find( {}, { title : 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
+      collection.find( {}, { title : 1, thumb: 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
         if (err) throw err
         socket.emit('entriesSuccessful', titles)
       })
