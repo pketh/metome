@@ -3,26 +3,46 @@
 // ┬──┬ ◡ﾉ(° -°ﾉ)
 
 
+/*
+*
+* modules
+*
+*/
+
 // npm
-var mongo     = require('mongodb')
-  , ObjectId  = require('mongodb').ObjectID
-  , express   = require('express')
-  , http      = require('http')
-  , io        = require('socket.io').listen(8000)
-  , fs        = require('fs')
-  , exec      = require('child_process').exec
-  , util      = require('util').inspect
-  , busBoy    = require('busboy')
-  , gm        = require('gm')
-  , mkdirp    = require('mkdirp')
-  , colors    = require('colors')
-  , dive      = require('dive')
-  // --> auth http://www.senchalabs.org/connect/basicAuth.html, for express?
 
-// metome modules
-  // require('./metome_modules/settings.js')
+var
+  mongo     = require('mongodb'),
+  ObjectId  = require('mongodb').ObjectID,
+  express   = require('express'),
+  http      = require('http'),
+  path      = require('path'),
+  io        = require('socket.io').listen(8000),
+  fs        = require('fs'),
+  exec      = require('child_process').exec,
+  util      = require('util').inspect,
+  busBoy    = require('busboy'),
+  gm        = require('gm'),
+  mkdirp    = require('mkdirp'),
+  colors    = require('colors'),
+  dive      = require('dive'),
+  passport  = require('passport'),
+  strategy  = require('passport-local').Strategy,
+  flash     = require('connect-flash'),
+  cookie    = require('cookie'), // parse cookies
+  bcrypt    = require('bcrypt') // hash pwds https://npmjs.org/package/bcrypt
 
-// configure
+
+// metome
+  // metome_modules: settings , login , register
+
+
+/*
+*
+* config
+*
+*/
+
 io.configure('development', function(){
   io.set('log level', 2) // default is 3 (shows full debug)
 })
@@ -37,45 +57,142 @@ colors.setTheme({
   error: 'red'
 })
 
-// start server
+
+/*
+*
+* Start Server
+*
+*/
+
+// refactor into serperate dev, prod configs http://expressjs.com/api.html#app.configure
 var app = express()
 app.set('port', process.env.PORT || 3000)
 app.use(express.logger('dev'))
 app.use(express.static('./public'))
+app.use(express.session({ secret: 'secret ghosties' }));
+app.use(passport.initialize())
+app.use(passport.session())
+app.use(app.router)
+
+
+/*
+*
+* Auth
+*
+*/
+
+// 〈( ^.^)ノ http://passportjs.org/guide
+
+var accounts = { pirijan: {email: 'pirijan@gmail.com', password: 'abc123'} } // was change to db
+// mongo: create a new collection 'accounts'
+// > db.createCollection('accounts')
+
+
+// local strategy
+passport.use(new strategy({
+    usernameField: 'email',
+  },
+  function(email, password, done) {
+    accounts.findOne({ email: email }, function (err, user) {
+      if (err) { return done(err) }
+      if (!user) {
+        return done(null, false, { message: 'Incorrect user email.' })
+      }
+      if (!user.validPassword(password)) {
+        return done(null, false, { message: 'Incorrect password.' })
+      }
+      return done(null, user)
+    })
+  }
+))
+
+
+// The serialization and deserialization logic is supplied by the application,
+// allowing the application to choose an appropriate database and/or object mapper,
+// without imposition by the authentication layer.
+
+// sessions
+passport.serializeUser(function(user, done) {
+  done(null, user.id) // user id retrieve with req.user.
+})
+
+passport.deserializeUser(function(id, done) {
+  accounts.findById(id, function(err, user) {
+    done(err, user)
+  })
+})
+
+
+/*
+*
+* Routes
+*
+*/
+
+// http://expressjs.com/api.html#app.routes
+// app.routes object houses all of the routes defined mapped by the associated HTTP verb
+// split into a seperate routes.js file
+// needs to be referenced above app.listen in //setup above?
+// can use req.params for entryID ?
+app.post('/login',
+  passport.authenticate('local', { successRedirect: '/metome.html',
+                                   failureRedirect: '/',
+                                   failureFlash: true }) // flash user error msgs?
+);
+
+
+// 404 (put last)
+app.use(function(req, res, next){
+  res.status(404);
+  // respond with html page
+  if (req.accepts('html')) {
+    res.render('404 html routing', { url: req.url }); //put path to 404.html here
+    return;
+  }
+  // or respond with json
+  if (req.accepts('json')) {
+    res.send({ error: 'API Path Not found' });
+    return;
+  }
+  // default to plain-text
+  res.type('txt').send('404 Not found');
+});
+
+// start listening
 app.listen(app.get('port'))
 
 
-// routes
+/*
+*
+* controllers
+*
+*/
 
-// https://npmjs.org/package/api
-// .use(express.router) // http://stackoverflow.com/questions/12695591/node-js-express-js-how-does-app-router-work
-// relation with history ..
-
-
-// events
 io.sockets.on('connection', function(socket) {
-  socket.on('login', function(username){
-    var user = username
+  socket.on('login', function(user){
+    console.log('info'.info + ':   ' + 'user is ' + user + user.id)
 
     mongo.connect('mongodb://localhost/metome', function(err, db) { // update to nodejitsu/mongolab path
       if (err) throw err
       var collection = db.collection(user)
 
-      // entries successful emits on connect
+      // load entrieslist
       collection.find( {}, { title : 1, thumb: 1 } ).sort( { _id: -1 } ).toArray(function(err, titles) {
         if (err) throw err
         socket.emit('entriesSuccessful', titles)
       })
+
 
       // load individual entry
       socket.on('requestEntry', function(entryID){
         console.log(entryID)
         collection.findOne({ '_id' : new ObjectId ( entryID ) }, function(err,entry) {
           if (err) throw err
-          var entryDate  = new Date( (new ObjectId(entryID).getTimestamp()) )
-            , entryMonth = entryDate.getMonth()
-            , entryYear  = entryDate.getFullYear()
-            , cover = new ObjectId(entryID)
+          var
+            entryDate  = new Date( (new ObjectId(entryID).getTimestamp()) ),
+            entryMonth = entryDate.getMonth(),
+            entryYear  = entryDate.getFullYear(),
+            cover = new ObjectId(entryID)
           socket.emit('loadEntry', entry, entryMonth, entryYear, entryID)
         })
       })
@@ -112,49 +229,69 @@ io.sockets.on('connection', function(socket) {
         )
       })
 
-// upload tasks start =====================================================================================================
+      // create new record
+      socket.on('newEntry', function(err){
+        if (err) throw err
+        var document =  {title:'', content:''}
+        collection.insert(document, function(err, entry) {
+          if (err) throw err
+          var entryID = entry[0]._id
+          console.log('info'.info + ':   ' + 'Record added – ' + entryID)
+          socket.emit('newEntrySuccess', entryID)
+        })
+      })
 
-      // receive image
-      app.post('/', function(req, res) {
+      // delete entry
+      socket.on('removeEntry', function(entryID){
+        collection.remove(
+          { '_id': new ObjectId ( entryID ) },
+          function(err){
+            if (err) throw err;
+            console.log('info'.info + ':   ' + 'record deleted - ' + entryID)
+            socket.emit('removeEntrySuccess', entryID)
+          })
+      })
+
+
+/*
+*
+* upload cover
+*
+*/
+      app.post('/covers', function(req, res) {
         console.log('upload going')
-        var infiles = 0
-          , outfiles = 0
-          , done = false
-          , busboy = new busBoy({
+        var
+          infiles = 0,
+          outfiles = 0,
+          done = false,
+          busboy = new busBoy({
             headers: req.headers,
             limits: {
               fileSize: 15000000,
               files: 1
             }
           })
+
         busboy.on('file', function(entryID, file, fileName, encoding, mimetype) {
-          var fileType = fileName.substr((~-fileName.lastIndexOf('.') >>> 0) + 2)
-            , targetPath  = './public/uploads/' + user + '/' + entryID
-            , newFile = targetPath + '/' + fileName
-
+          var
+            fileType = path.extname(fileName), // was using : fileName.substr((~-fileName.lastIndexOf('.') >>> 0) + 2)
+            targetPath  = './public/uploads/' + user + '/' + entryID,
+            newFile = targetPath + '/' + fileName
           console.log(newFile)
-
           mkdirp(targetPath, function (err) {
             if (err) throw err
             console.log(targetPath + ' pow!');
             ++infiles
-
             onFile(file, newFile, function() {
               ++outfiles
               if (done)
                 console.log(outfiles + '/' + infiles + ' parts written to disk')
               if (done && infiles === outfiles) {
                 console.log('All parts written to disk')
-
                 res.writeHead(200)
                 res.end()
-
-
-
                 processFile(entryID, fileType, targetPath, newFile)
                 cleanDir(targetPath, fileName, fileType)
-
-
               }
             })
           })
@@ -181,7 +318,6 @@ io.sockets.on('connection', function(socket) {
         })
       }
 
-      // removes previous uploads
       function cleanDir(targetPath, fileName, fileType){
         dive(targetPath, function(err, file) {
           if (err) throw err
@@ -191,19 +327,27 @@ io.sockets.on('connection', function(socket) {
         })
       }
 
-      // process images
+
+/*
+*
+* process cover
+*
+*/
+// processfile , onfile, cleandir -> uploads.js or one js file per function - one input and one output per module?
+
       function processFile(entryID, fileType, targetPath, newFile) {
         console.log('processFile hit'.debug)
-        var thumb       = targetPath + '/thumb.png'
-          , thumb2x     = targetPath + '/thumb@2x.png'
-          , mask        = './public/assets/mask.png'
-          , mask2x      = './public/assets/mask@2x.png'
-          , cover       = targetPath + '/cover.' + fileType
-          , cover2x     = targetPath + '/cover@2x.' + fileType
-          , thumbWidth  = 21
-          , thumbHeight = 34
-          , thumbOffset = 38
-          , coverWidth  = 760
+        var
+          thumb       = targetPath + '/thumb.png',
+          thumb2x     = targetPath + '/thumb@2x.png',
+          mask        = './public/assets/mask.png',
+          mask2x      = './public/assets/mask@2x.png',
+          cover       = targetPath + '/cover.' + fileType,
+          cover2x     = targetPath + '/cover@2x.' + fileType,
+          thumbWidth  = 21,
+          thumbHeight = 34,
+          thumbOffset = 38,
+          coverWidth  = 760
 
         // original
         collection.update(
@@ -300,44 +444,25 @@ io.sockets.on('connection', function(socket) {
             next()
           })
         }
+      }
 
-      } // closes processfile
 
-// upload tasks end ======================================================================================
-
-      // insert new record
-      socket.on('newEntry', function(err){
-        if (err) throw err
-        var document =  {title:'', content:''}
-        collection.insert(document, function(err, entry) {
-          if (err) throw err
-          var entryID = entry[0]._id
-          console.log('Record added as ' + entryID)
-          socket.emit('newEntrySuccess', entryID)
-        })
-      })
-
-      socket.on('removeEntry', function(entryID){
-        collection.remove(
-          { '_id': new ObjectId ( entryID ) },
-          function(err){
-            if (err) throw err;
-            console.log('record deleted: ' + entryID)
-            socket.emit('removeEntrySuccess', entryID)
-          })
-      })
+/*
+*
+* offline
+*
+*/
 
       socket.on('disconnect', function(){
         console.log('socket.io disconnect event fired')
-        // log the disconnect to a global json.. (reasons? flushing scheme/reap?, also needs to include user, entryID, time)
-        // socket.emit disconnect client code = ur in offline mode / read only
         // fired in all cases when client closed.
-        // for reconnect, you have to use the 'connection' event
+        // socket.emit disconnect client code = ur in offline mode / read only
+        // for reconnect, you have to use the 'connection' event. perhaps iterate over connection attemps (0 = render list)
       })
 
 
     }) // close mongo
 
-  }) // close user 'login' socket
+  }) // close user login socket
 
 }) // closes socket.io
