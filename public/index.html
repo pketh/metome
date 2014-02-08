@@ -3,11 +3,12 @@
 <head>
     <meta charset="utf-8">
     <title>marketing page for Metome.io / not logged in</title>
-    <link rel="stylesheet" type="text/css" href="style.css" />
+    <!-- <link rel="stylesheet" type="text/css" href="style.css" /> -->
 
     <!--[if lt IE 9]>
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
+    <script src="libs/jquery-2.0.3.min.js"></script> <!-- temp -->
 
 </head>
 <body>
@@ -15,6 +16,15 @@
   <section>
     This is the logged out / marketing page.
   </section>
+
+
+  <section class="login">
+    <script>
+      $('.login').load('templates/login.html')
+    </script>
+  </section>
+
+
 
 </body>
 </html>
