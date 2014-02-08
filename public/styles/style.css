@@ -45,6 +45,10 @@
   outline: none;
 }
 
+.something svg:hover {
+    fill: #fce57e; /*change this*/
+}
+
 img {
     max-width: 100%;
 }
@@ -58,13 +62,10 @@ img {
   cursor: -moz-zoom-in;
 }
 
-.cover-out {
-  cursor: -webkit-zoom-out;
-  cursor: -moz-zoom-out;
-}
-
 .thumb {
-  /*height and width here*/
+  width: 21px;
+  height: 34px;
+  vertical-align: middle;
 }
 
 .metome {
@@ -117,7 +118,7 @@ li {}
 /* --- show/upload file section --- */
 
 
-.fileContainer {
+.coverContainer {
   position: relative;
   clear: both;
   margin-top: 20px;
