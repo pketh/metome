@@ -28,13 +28,13 @@ io.configure('development', function(){
 })
 
 colors.setTheme({
-  silly: 'rainbow'
-, info: 'grey'
-, help: 'blue'
-, status: 'blue'
-, warn: 'yellow'
-, debug: 'magenta'
-, error: 'red'
+  info: 'green',
+  help: 'cyan',
+  data: 'grey',
+  warn: 'yellow',
+  silly: 'rainbow',
+  debug: 'magenta',
+  error: 'red'
 })
 
 // start server
