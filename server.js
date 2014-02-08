@@ -33,13 +33,12 @@ var
   bcrypt    = require('bcrypt') // hash pwds https://npmjs.org/package/bcrypt
 
 
-// metome
-  // metome_modules: settings , login , register
+// +++ metome_modules: settings , login , register
 
 
 /*
 *
-* config
+* node config
 *
 */
 
@@ -64,16 +63,16 @@ colors.setTheme({
 *
 */
 
-// refactor into serperate dev, prod configs http://expressjs.com/api.html#app.configure
 var app = express()
-app.set('port', process.env.PORT || 3000)
-app.use(express.logger('dev'))
-app.use(express.static('./public'))
-app.use(express.session({ secret: 'secret ghosties' }));
-app.use(passport.initialize())
-app.use(passport.session())
-app.use(app.router)
-
+app.configure(function() {
+  app.set('port', process.env.PORT || 3000)
+  app.use(express.logger('dev'))
+  app.use(express.static('./public'))
+  app.use(express.session({ secret: 'HHKB keyboard cat' }));
+  app.use(passport.initialize())
+  app.use(passport.session())
+  app.use(app.router)
+})
 
 /*
 *
@@ -82,10 +81,13 @@ app.use(app.router)
 */
 
 // 〈( ^.^)ノ http://passportjs.org/guide
+// https://github.com/jaredhanson/passport-local/blob/master/examples/login/app.js
 
-var accounts = { pirijan: {email: 'pirijan@gmail.com', password: 'abc123'} } // was change to db
-// mongo: create a new collection 'accounts'
-// > db.createCollection('accounts')
+var users = [
+  { id: 1, email: 'pirijan@gmail.com', password: 'abc123' },
+  { id: 2, email: 'joe@example.com', password: 'birthday' }
+]
+
 
 
 // local strategy
@@ -93,7 +95,7 @@ passport.use(new strategy({
     usernameField: 'email',
   },
   function(email, password, done) {
-    accounts.findOne({ email: email }, function (err, user) {
+    users.findOne({ email: email }, function (err, user) {
       if (err) { return done(err) }
       if (!user) {
         return done(null, false, { message: 'Incorrect user email.' })
@@ -117,7 +119,7 @@ passport.serializeUser(function(user, done) {
 })
 
 passport.deserializeUser(function(id, done) {
-  accounts.findById(id, function(err, user) {
+  users.findById(id, function(err, user) {
     done(err, user)
   })
 })
@@ -170,7 +172,7 @@ app.listen(app.get('port'))
 
 io.sockets.on('connection', function(socket) {
   socket.on('login', function(user){
-    console.log('info'.info + ':   ' + 'user is ' + user + user.id)
+    console.log('info'.info + ':   ' + 'user is ' + user + ' ' + user.id) // change to session id
 
     mongo.connect('mongodb://localhost/metome', function(err, db) { // update to nodejitsu/mongolab path
       if (err) throw err
