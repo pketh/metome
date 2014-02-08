@@ -1,11 +1,6 @@
 /* less of sass */
 /* include reset */
 
-.assetPreloader {
-  position: absolute;
-  background: url('../assets/sendFile.svg'), url('../assets/sendFile-hover.svg'), url('../assets/replaceFile.svg'), url('../assets/replaceFile-hover.svg');
-}
-
 .hidden {
   display: none !important;
 }
