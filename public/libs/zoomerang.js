@@ -4,6 +4,9 @@
 
 (function () {
 
+    // regex
+    var percentageRE = /^([\d\.]+)%$/
+
     // elements
     var overlay = document.createElement('div'),
         wrapper = document.createElement('div'),
@@ -22,8 +25,8 @@
         transitionTimingFunction: 'cubic-bezier(.4,0,0,1)',
         bgColor: '#fff',
         bgOpacity: 1,
-        maxWidth: 1000,
-        maxHeight: 1000
+        maxWidth: 300,
+        maxHeight: 300
     }
 
     // compatibility stuff
@@ -74,8 +77,8 @@
 
     function sniffTransition () {
         var ret   = {},
-            trans = ['transition', 'webkitTransition', 'mozTransition'],
-            tform = ['transform', 'webkitTransform', 'mozTransform'],
+            trans = ['webkitTransition', 'transition', 'mozTransition'],
+            tform = ['webkitTransform', 'transform', 'mozTransform'],
             end   = {
                 'transition'       : 'transitionend',
                 'mozTransition'    : 'transitionend',
@@ -186,10 +189,16 @@
             }, true)
 
             // deal with % width and height
-            setStyle(wrapper, {
-                width: p.width + 'px',
-                height: p.height + 'px'
-            })
+            var wPctMatch = target.style.width.match(percentageRE),
+                hPctMatch = target.style.height.match(percentageRE)
+            if (wPctMatch || hPctMatch) {
+                var wPct = wPctMatch ? +wPctMatch[1] / 100 : 1,
+                    hPct = hPctMatch ? +hPctMatch[1] / 100 : 1
+                setStyle(wrapper, {
+                    width: ~~(p.width / wPct) + 'px',
+                    height: ~~(p.height / hPct) + 'px'
+                })
+            }
 
             // insert overlay & placeholder
             parent.appendChild(overlay)
@@ -269,6 +278,7 @@
     }
 
     overlay.addEventListener('click', api.close)
+    wrapper.addEventListener('click', api.close)
 
     // umd expose
     if (typeof exports == "object") {
@@ -278,4 +288,4 @@
     } else {
         this.Zoomerang = api
     }
-})()
+})();

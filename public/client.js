@@ -33,6 +33,7 @@ $(document).ready(function () {
 
   // list entries (triggered by connection)
   socket.on('entriesSuccessful', function(titles){
+    console.log('entries successful loaded');
     titles.forEach(function (title) {
       if (title.title === '') {
         $('.entriesList').append(
@@ -85,14 +86,17 @@ $(document).ready(function () {
       $('.title').focus()
       if (entry.cover) {
         var coverPath = entry.cover.substring(8)
-        $('.cover').removeClass('hidden')
-        $('.cover').attr('src', coverPath )
+        $('.cover').attr('src', coverPath).removeClass('hidden')
       }
       if (!(window.XMLHttpRequest)) {
         $('.btn-newFile').addClass('hidden')
       }
-      $('.cover').on('click', function() {
-        $('.cover').toggleClass('cover-out')
+
+      // cover zoom
+      Zoomerang.config({
+        transitionDuration: '.3s',
+        maxWidth: 1000,
+        maxHeight: 1000,
       })
       Zoomerang.listen('.cover')
 
@@ -130,8 +134,9 @@ $(document).ready(function () {
 
       // save entry
       function saveTitle(event, entryID) {
-          var newTitle = $('.title').val()
-            , listItem = $('.entriesList li[data-id=' + entryID + ']')
+          var
+            newTitle = $('.title').val(),
+            listItem = $('.entriesList li[data-id=' + entryID + ']')
           socket.emit('saveTitle', { title: newTitle }, entryID)
           console.log('Saving... ' + 'title ' + entryID)
           console.log(newTitle)
@@ -230,17 +235,19 @@ $(document).ready(function () {
   function uploadTasks(entryID) {
     $('input').change(function(event) {
       event.preventDefault()
-      var file = this.files[0]
-        , fileName = file.name
-        , fileSize = file.size
-        , fileSizeLimit = 15000000
+      var
+        file = this.files[0],
+        fileName = file.name,
+        fileSize = file.size,
+        fileSizeLimit = 15000000
 
       if (fileSize <= fileSizeLimit) {
         renderPreview(file)
-        var formData = new FormData()
-          , xhr = new XMLHttpRequest()
+        var
+          formData = new FormData(),
+          xhr = new XMLHttpRequest()
         formData.append(entryID, file)
-        xhr.open('post', '/', true, user)
+        xhr.open('post', '/covers', true, user)
         xhr.upload.onprogress = function(event) {
           var percent = (event.loaded / event.total) * 100
           progressUpdate(percent)
@@ -260,8 +267,9 @@ $(document).ready(function () {
   }
 
   function renderPreview(file) {
-    var windowURL = window.URL || window.webkitURL
-      , blobURL = windowURL.createObjectURL(file)
+    var
+      windowURL = window.URL || window.webkitURL,
+      blobURL = windowURL.createObjectURL(file)
     $('.status .date').addClass('hidden')
     $('.status .savetext').addClass('hidden')
     $('.status .sendfile').removeClass('hidden')
@@ -288,24 +296,10 @@ $(document).ready(function () {
     $('.sendfile .progress').val(0).text('0%')
   }
 
-  socket.on('thumbSuccess', function(entryID, thumb2x) {
-    console.log('BEEEP thumb2x gm processed on server!')
-    console.log('upload list with : ' + entryID + thumb2x)
-    // update the list with the new thumb next to the entryid list on save --------------------------------------------------------,,,,,,,,,
-    // var listItem = $('.entriesList li[data-id=' + entryID + ']')
-    // listItem.empty().append(newTitle) <-- how txt does it
-  })
-
-
-/*
-*
-* Settings
-*
-*/
-
-  // settings view
-  $('.settings').on('click', function(){
-    console.log('settings clicked')
+  socket.on('thumbSuccess', function(entryID, thumb) {
+    console.log('update list with : ' + entryID + thumb)
+    var thumbPath = thumb.substring(8)
+    $('.entriesList li[data-id=' + entryID + '] img').attr('src', thumbPath)
   })
 
 
@@ -339,6 +333,18 @@ $(document).ready(function () {
     // reconnect - emitted when socket.io successfully reconnected to the server
     // on a reconnect event switch contenteditables back to true
     // make sure the list doesn't append again to replicate on top of existing
+  })
+
+
+/*
+*
+* Settings
+*
+*/
+
+  // settings view
+  $('.settings').on('click', function(){
+    console.log('settings clicked')
   })
 
 
