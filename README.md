@@ -1,23 +1,36 @@
 # Metome
 
-## Ignore this repo for now plz.
-A learning exercise to push a db entry down to the client (through JSON), and then updating the db upstream with changes made on the client. In real time, in the simplest most minimal way possible.
+Metome was designed to be a simple, private personal diary service. It's a real time, single page app for non-social, personal writing. It's a side-project of mine that I've decided to [walk away from for now][blogpost].
 
-## uses as few dependencies as possible
-- mongo
-- node
-- some npm modules
-- few jquery bits
+I haven't gotten around to actually implementing a real front-end, but here's what the end design would've looked like.
+
+<img src="https://dl.dropboxusercontent.com/u/366007/metome-sample.png">
+
+[(more screens)][pketh]
+
+I decided to open source the code for future reference. Who knows? it may be something useful to learn from (especially the image upload stuff).
+
+It's not a complete [sunk cost][wiki] though.
+
+Diving head first into the world of servers, I learned about:
+
+- Mongodb crud operations
+- Socket.io for real time user data saving and DOM manipulation
+- Node.JS (and the awesomeness of NPM)
+
+On the design side I gained an appreciation for the challenges of:
+
+- Designing low friction forms
+- Software pricing models
+- Typography on the web
+- Real time, single page app (SPA) design
 
 ## Starting it up
 	$ mongod
 	$ node server.js
-	http://localhost:3000/metome.html <-- this may change
+	http://localhost:3000/metome.html <-- temporary app url
 
-and if you want to run queries:
-	$ mongo
 
-## JS styleguide and .jshintrc
-	https://github.com/reqshark/js-standards
-
-	+ I need to make my own based on this and airbnb/artsy
+[blogpost]:http://pketh.github.io/2014/02/09/walking-away.html
+[wiki]:http://en.wikipedia.org/wiki/Sunk_costs
+[pketh]:http://pketh.org/Metome-Journal

@@ -5,11 +5,9 @@
 
 /*
 *
-* modules
+* node modules
 *
 */
-
-// npm
 
 var
   mongo     = require('mongodb'),
@@ -29,22 +27,17 @@ var
   passport  = require('passport'),
   strategy  = require('passport-local').Strategy,
   flash     = require('connect-flash'),
-  cookie    = require('cookie'), // parse cookies
+  cookie    = require('cookie'), // parse cookies https://npmjs.org/package/cookie
   bcrypt    = require('bcrypt') // hash pwds https://npmjs.org/package/bcrypt
-
 
 // +++ metome_modules: settings , login , register
 
 
 /*
 *
-* node config
+* app config
 *
 */
-
-io.configure('development', function(){
-  io.set('log level', 2) // default is 3 (shows full debug)
-})
 
 colors.setTheme({
   info: 'green',
@@ -56,23 +49,23 @@ colors.setTheme({
   error: 'red'
 })
 
-
-/*
-*
-* Start Server
-*
-*/
-
 var app = express()
+var siteSecret = 'HHKB keyboard cat'
 app.configure(function() {
   app.set('port', process.env.PORT || 3000)
   app.use(express.logger('dev'))
   app.use(express.static('./public'))
-  app.use(express.session({ secret: 'HHKB keyboard cat' }));
+  app.use(express.cookieParser())
+  app.use(express.session({ secret: siteSecret }))
   app.use(passport.initialize())
   app.use(passport.session())
   app.use(app.router)
 })
+
+io.configure('development', function(){
+  io.set('log level', 2) // default is 3 (shows full debug)
+})
+
 
 /*
 *
@@ -84,21 +77,31 @@ app.configure(function() {
 // https://github.com/jaredhanson/passport-local/blob/master/examples/login/app.js
 
 var users = [
-  { id: 1, email: 'pirijan@gmail.com', password: 'abc123' },
-  { id: 2, email: 'joe@example.com', password: 'birthday' }
+  { id: 1, username: 'pirijan@gmail.com', password: 'abc123' },
+  { id: 2, username: 'joe@example.com', password: 'birthday' }
 ]
 
+// passport session setup
+passport.serializeUser(function(user, done) {
+  done(null, user.id)
+  // If authentication succeeds, a session will be established and maintained via a cookie set in the user's browser.
+  console.log('info'.info + ':   ' + 'passport user serialized - ' + user + ' ' + req.user)
+})
+passport.deserializeUser(function(id, done) {
+  users.findById(id, function(err, user) {
+    done(err, user)
+    console.log('info'.info + ':   ' + 'deserialized :' + user + ' or ' + req.user)
+  })
+})
 
 
 // local strategy
-passport.use(new strategy({
-    usernameField: 'email',
-  },
-  function(email, password, done) {
-    users.findOne({ email: email }, function (err, user) {
+passport.use(new strategy(
+  function(username, password, done) {
+    User.findOne({ username: username }, function(err, user) {
       if (err) { return done(err) }
       if (!user) {
-        return done(null, false, { message: 'Incorrect user email.' })
+        return done(null, false, { message: 'Incorrect username.' })
       }
       if (!user.validPassword(password)) {
         return done(null, false, { message: 'Incorrect password.' })
@@ -108,21 +111,6 @@ passport.use(new strategy({
   }
 ))
 
-
-// The serialization and deserialization logic is supplied by the application,
-// allowing the application to choose an appropriate database and/or object mapper,
-// without imposition by the authentication layer.
-
-// sessions
-passport.serializeUser(function(user, done) {
-  done(null, user.id) // user id retrieve with req.user.
-})
-
-passport.deserializeUser(function(id, done) {
-  users.findById(id, function(err, user) {
-    done(err, user)
-  })
-})
 
 
 /*
@@ -136,11 +124,16 @@ passport.deserializeUser(function(id, done) {
 // split into a seperate routes.js file
 // needs to be referenced above app.listen in //setup above?
 // can use req.params for entryID ?
+
 app.post('/login',
   passport.authenticate('local', { successRedirect: '/metome.html',
                                    failureRedirect: '/',
                                    failureFlash: true }) // flash user error msgs?
 );
+
+app.get('/metome.html', function(req, res){
+  res.render('index', { user: req.user });
+});
 
 
 // 404 (put last)
@@ -148,6 +141,7 @@ app.use(function(req, res, next){
   res.status(404);
   // respond with html page
   if (req.accepts('html')) {
+    console.log('error'.error + ':   ' + '404 hit')
     res.render('404 html routing', { url: req.url }); //put path to 404.html here
     return;
   }
@@ -159,6 +153,7 @@ app.use(function(req, res, next){
   // default to plain-text
   res.type('txt').send('404 Not found');
 });
+
 
 // start listening
 app.listen(app.get('port'))
@@ -398,7 +393,7 @@ io.sockets.on('connection', function(socket) {
 
         function thumbSuccess() {
           socket.emit('thumbSuccess', entryID, thumb2x)
-          console.log('EEEP doing something: ' + entryID + thumb2x.silly)
+          console.log('EEEP doing something: ' + entryID + ' ' + thumb2x.silly)
         }
 
 
