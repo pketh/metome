@@ -4,13 +4,9 @@
 
 Metome was designed to be a simple, private personal diary service. It's a real time, single page app for non-social, personal writing. It's a side-project of mine that I've decided to [walk away from for now][blogpost].
 
-I haven't gotten around to actually implementing a real front-end, but here's a bit of what the end design would've looked like.
-
-<img src="https://dl.dropboxusercontent.com/u/366007/metome-sample.png">
-
-[(more screens)][pketh]
-
 I decided to open source the code for future reference. Who knows? it may be something useful to learn from (especially the image upload stuff).
+
+I hadn't gotten around to actually implementing a real front-end, but here was the [planned design][pketh].
 
 It's not a complete [sunk cost][wiki] though.
 
